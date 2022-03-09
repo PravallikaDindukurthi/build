@@ -59,6 +59,11 @@ type BuildRunSpec struct {
 	// Env contains additional environment variables that should be passed to the build container
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Contains information about retention params
+	//
+	// +optional
+	Retention BuildRunRetention `json:"retention,omitempty"`
 }
 
 // BuildRunRequestedState defines the buildrun state the user can provide to override whatever is the current state.
@@ -281,6 +286,11 @@ type Condition struct {
 
 	// A human readable message indicating details about the transition.
 	Message string `json:"message" description:"human-readable message indicating details about last transition"`
+}
+
+type BuildRunRetention struct {
+	TtlAfterFailed    metav1.Duration `json:"ttlAfterFailed,omitempty"`
+	TtlAfterSucceeded metav1.Duration `json:"ttlAfterSucceeded,omitempty"`
 }
 
 func init() {
