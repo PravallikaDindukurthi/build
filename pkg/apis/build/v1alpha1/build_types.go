@@ -138,6 +138,11 @@ type BuildSpec struct {
 	// Env contains additional environment variables that should be passed to the build container
 	// +optional
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// Contains information about retention params
+	//
+	// +optional
+	Retention BuildRetention `json:"retention,omitempty"`
 }
 
 // StrategyName returns the name of the configured strategy, or 'undefined' in
@@ -213,6 +218,14 @@ type BuildList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Build `json:"items"`
+}
+
+// Retention struct for builds.
+type BuildRetention struct {
+	FailedLimit       uint            `json:"failedLimit,omitempty"`
+	SucceededLimit    uint            `json:"succeededLimit,omitempty"`
+	TtlAfterFailed    metav1.Duration `json:"ttlAfterFailed,omitempty"`
+	TtlAfterSucceeded metav1.Duration `json:"ttlAfterSucceeded,omitempty"`
 }
 
 func init() {
