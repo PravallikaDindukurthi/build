@@ -63,7 +63,7 @@ type BuildRunSpec struct {
 	// Contains information about retention params
 	//
 	// +optional
-	Retention BuildRunRetention `json:"retention,omitempty"`
+	Retention *BuildRunRetention `json:"retention,omitempty"`
 }
 
 // BuildRunRequestedState defines the buildrun state the user can provide to override whatever is the current state.
@@ -289,8 +289,8 @@ type Condition struct {
 }
 
 type BuildRunRetention struct {
-	TtlAfterFailed    metav1.Duration `json:"ttlAfterFailed,omitempty"`
-	TtlAfterSucceeded metav1.Duration `json:"ttlAfterSucceeded,omitempty"`
+	TtlAfterFailed    *metav1.Duration `json:"ttlAfterFailed,omitempty"`
+	TtlAfterSucceeded *metav1.Duration `json:"ttlAfterSucceeded,omitempty"`
 }
 
 func init() {

@@ -142,7 +142,7 @@ type BuildSpec struct {
 	// Contains information about retention params
 	//
 	// +optional
-	Retention BuildRetention `json:"retention,omitempty"`
+	Retention *BuildRetention `json:"retention,omitempty"`
 }
 
 // StrategyName returns the name of the configured strategy, or 'undefined' in
@@ -222,10 +222,10 @@ type BuildList struct {
 
 // Retention struct for builds.
 type BuildRetention struct {
-	FailedLimit       uint            `json:"failedLimit,omitempty"`
-	SucceededLimit    uint            `json:"succeededLimit,omitempty"`
-	TtlAfterFailed    metav1.Duration `json:"ttlAfterFailed,omitempty"`
-	TtlAfterSucceeded metav1.Duration `json:"ttlAfterSucceeded,omitempty"`
+	FailedLimit       *uint            `json:"failedLimit,omitempty"`
+	SucceededLimit    *uint            `json:"succeededLimit,omitempty"`
+	TtlAfterFailed    *metav1.Duration `json:"ttlAfterFailed,omitempty"`
+	TtlAfterSucceeded *metav1.Duration `json:"ttlAfterSucceeded,omitempty"`
 }
 
 func init() {
