@@ -73,6 +73,7 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 		validate.Sources,
 		validate.BuildName,
 		validate.Envs,
+		validate.Retention,
 	}
 
 	// trigger all current validations
