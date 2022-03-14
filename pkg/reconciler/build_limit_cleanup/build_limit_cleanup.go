@@ -21,9 +21,9 @@ import (
 )
 
 // ReconcileBuild reconciles a Build object
-type ReconcileBuild struct {
+type ReconcileBuildLimit struct {
 	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
+	// that reads objects from :qthe cache and writes to the apiserver
 	config                *config.Config
 	client                client.Client
 	scheme                *runtime.Scheme
@@ -31,7 +31,7 @@ type ReconcileBuild struct {
 }
 
 func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerReferenceFunc) reconcile.Reconciler {
-	return &ReconcileBuild{
+	return &ReconcileBuildLimit{
 		config:                c,
 		client:                mgr.GetClient(),
 		scheme:                mgr.GetScheme(),
@@ -39,7 +39,7 @@ func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerRefer
 	}
 }
 
-func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(ctx, r.config.CtxTimeOut)
 	defer cancel()
@@ -73,6 +73,7 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 			for _, br := range allBuildRuns.Items {
 				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
 					buildRunFailed = append(buildRunFailed, br)
+					ctxlog.Debug(ctx, "failed buildruns list", br)
 				}
 			}
 
@@ -90,6 +91,7 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 			for _, br := range allBuildRuns.Items {
 				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
 					buildRunSucceeded = append(buildRunSucceeded, br)
+					ctxlog.Debug(ctx, "succeeded buildruns list", br)
 				}
 			}
 			if len(buildRunSucceeded) > int(*b.Spec.Retention.SucceededLimit) {
