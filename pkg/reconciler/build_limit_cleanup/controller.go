@@ -53,6 +53,8 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		return err
 	}
 
+	ctxlog.Debug(ctx, "start reconciling Build-Limit", namespace)
+
 	pred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectOld.(*build.Build)
