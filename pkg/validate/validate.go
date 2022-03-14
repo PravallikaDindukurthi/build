@@ -27,6 +27,8 @@ const (
 	BuildName = "buildname"
 	// Envs for validating `spec.env` entries
 	Envs = "env"
+	//Retention for validating spec.retention
+	Retention = "retention"
 	// OwnerReferences for validating the ownerreferences between a Build
 	// and BuildRun objects
 	OwnerReferences = "ownerreferences"
@@ -62,6 +64,8 @@ func NewValidation(
 	case BuildName:
 		return &BuildNameRef{Build: build}, nil
 	case Envs:
+		return &Env{Build: build}, nil
+	case Retention:
 		return &Env{Build: build}, nil
 	default:
 		return nil, fmt.Errorf("unknown validation type")
