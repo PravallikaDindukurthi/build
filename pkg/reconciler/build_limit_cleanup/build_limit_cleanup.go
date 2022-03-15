@@ -12,12 +12,10 @@ import (
 	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/config"
 	"github.com/shipwright-io/build/pkg/ctxlog"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -76,7 +74,7 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 			for _, br := range allBuildRuns.Items {
 				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
 					buildRunFailed = append(buildRunFailed, br)
-					ctxlog.Debug(ctx, "failed buildruns list", br)
+					// ctxlog.Debug(ctx, "failed buildruns list", br)
 				}
 
 			}
@@ -91,15 +89,18 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 
 				failedLimit := *b.Spec.Retention.FailedLimit
 				lenBuildRun := len(buildRunFailed)
-
-				for i := 0; lenBuildRun > int(failedLimit); i += 1 {
-					lastTaskRun := &v1beta1.TaskRun{}
-					getTaskRunErr := r.client.Get(ctx, types.NamespacedName{Name: buildRunFailed[i].Name, Namespace: request.Namespace}, lastTaskRun)
-					if getTaskRunErr != nil {
-						ctxlog.Debug(ctx, "Error getting task run for - ", buildRunFailed[i].Name, err)
+				i := 0
+				for lenBuildRun > int(failedLimit) {
+					// lastTaskRun := &v1beta1.TaskRun{}
+					//getTaskRunErr := r.client.Get(ctx, types.NamespacedName{Name: buildRunFailed[i].Name, Namespace: request.Namespace}, lastTaskRun)
+					deleteBuildRunErr := r.client.Delete(ctx, &buildRunFailed[i], &client.DeleteOptions{})
+					if deleteBuildRunErr != nil {
+						ctxlog.Debug(ctx, "Error deleting buildRun - ", buildRunFailed[i].Name, err)
 					}
-					ctxlog.Debug(ctx, "Get task run result: ", lastTaskRun.Name, namespace)
+					fmt.Println("Deleted BuildRun: ", buildRunFailed[i].Name)
+					// ctxlog.Debug(ctx, "Get task run result: ", lastTaskRun.Name, namespace)
 					lenBuildRun -= 1
+					i += 1
 					// get task run
 					// delete the task run
 					// delete build run
@@ -124,24 +125,27 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 				succeededLimit := *b.Spec.Retention.SucceededLimit
 				lenBuildRun := len(buildRunSucceeded)
 
-				for i := 0; lenBuildRun > int(succeededLimit); i += 1 {
-					lastTaskRun := &v1beta1.TaskRun{}
-					getTaskRunErr := r.client.Get(ctx, types.NamespacedName{Name: buildRunSucceeded[i].Name, Namespace: request.Namespace}, lastTaskRun)
-					if getTaskRunErr != nil {
+				i := 0
+				for lenBuildRun > int(succeededLimit) {
+					// lastTaskRun := &v1beta1.TaskRun{}
+					// getTaskRunErr := r.client.Get(ctx, types.NamespacedName{Name: *buildRunSucceeded[i].Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
+					// getTaskRunErr := buildRunSucceeded[i].Status.LatestTaskRunRef
+					deleteBuildRunErr := r.client.Delete(ctx, &buildRunSucceeded[i], &client.DeleteOptions{})
+					if deleteBuildRunErr != nil {
 						// ctxlog.Debug(ctx, "Error getting task run for - ", buildRunSucceeded[i], err)
-						fmt.Println("Error getting task run for: ------")
+						ctxlog.Debug(ctx, "Error deleting buildRun - ", buildRunFailed[i].Name, err)
 						fmt.Println(buildRunSucceeded[i].Name)
-					} else {
-						// ctxlog.Debug(ctx, "Get task run result: ", lastTaskRun.Name, namespace)
-						fmt.Println("Task run: -----")
-						fmt.Println(lastTaskRun)
-
-						lenBuildRun -= 1
-						// 	// get task run
-						// 	// delete the task run
-						// 	// delete build run
-						// 	// poll to see if they are deleted <-?
 					}
+
+					// ctxlog.Debug(ctx, "Get task run result: ", lastTaskRun.Name, namespace)
+					fmt.Println("Deleted BuildRun: ", buildRunFailed[i].Name)
+
+					// 	// get task run
+					// 	// delete the task run
+					// 	// delete build run
+					// 	// poll to see if they are deleted <-?
+					i += 1
+					lenBuildRun -= 1
 
 				}
 				fmt.Println("Task run end: -----")
