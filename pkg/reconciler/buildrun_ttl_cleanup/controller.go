@@ -10,7 +10,6 @@ import (
 	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/config"
 	"github.com/shipwright-io/build/pkg/ctxlog"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -60,9 +59,13 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 
 			o := e.Object.(*buildv1alpha1.BuildRun)
 
-			if (o.Spec.Retention != nil) &&
-				((o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionFalse) ||
-					(o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionTrue)) {
+			// if (o.Spec.Retention != nil) &&
+			// 	((o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionFalse) ||
+			// 		(o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionTrue)) {
+			// 	return true
+			// 	//enqueue
+			// }
+			if o.Spec.Retention != nil {
 				return true
 				//enqueue
 			}
@@ -70,9 +73,13 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*buildv1alpha1.BuildRun)
-			if (o.Spec.Retention != nil) &&
-				((o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionFalse) ||
-					(o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionTrue)) {
+			// if (o.Spec.Retention != nil) &&
+			// 	((o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionFalse) ||
+			// 		(o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionTrue)) {
+			// 	return true
+			// 	//enqueue
+			// }
+			if o.Spec.Retention != nil {
 				return true
 				//enqueue
 			}
@@ -83,7 +90,6 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 			return false
 		},
 	}
-
 	// Watch for changes to primary resource BuildRun // Requeue after some time
 	// Requeue after completion_time + ttl - Now
 	if err = c.Watch(&source.Kind{Type: &buildv1alpha1.BuildRun{}}, &handler.EnqueueRequestForObject{}, predBuildRun); err != nil {
