@@ -8,14 +8,18 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/config"
 	"github.com/shipwright-io/build/pkg/ctxlog"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -40,6 +44,38 @@ func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerRefer
 	}
 }
 
+func DeleteBuildRun(ctx context.Context, rclient client.Client, br *build.BuildRun, request reconcile.Request) {
+	ctxlog.Info(ctx, "Delete build run: ", br.Name, namespace)
+	lastTaskRun := &v1beta1.TaskRun{}
+	getTaskRunErr := rclient.Get(ctx, types.NamespacedName{Name: *br.Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
+	if getTaskRunErr != nil {
+		ctxlog.Debug(ctx, "Error getting task run.")
+	}
+	deleteBuildRunErr := rclient.Delete(ctx, br, &client.DeleteOptions{})
+	if deleteBuildRunErr != nil {
+		ctxlog.Debug(ctx, "Error deleting buildRun.", br.Name, deleteBuildRunErr)
+		fmt.Println(br.Name)
+	}
+
+	err := wait.PollImmediate(1*time.Second, 10*time.Second, func() (done bool, err error) {
+		buildRun := &build.BuildRun{}
+		err = rclient.Get(ctx, types.NamespacedName{Name: br.Name, Namespace: request.Namespace}, buildRun)
+		return apierrors.IsNotFound(err), nil
+	})
+	if err != nil {
+		ctxlog.Debug(ctx, "Error polling for deleting buildrun.")
+	}
+	err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (done bool, err error) {
+		lastTaskRun = &v1beta1.TaskRun{}
+		taskRunErr := rclient.Get(ctx, types.NamespacedName{Name: *br.Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
+		return apierrors.IsNotFound(taskRunErr), nil
+	})
+	if err != nil {
+		ctxlog.Debug(ctx, "Error deleting the TaskRun..")
+	}
+	//Return error
+}
+
 func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.
 	ctx, cancel := context.WithTimeout(ctx, r.config.CtxTimeOut)
@@ -56,7 +92,9 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		return reconcile.Result{}, nil
 	}
 
-	// Check if limit is set. If so, get all corresponding BR, else, return.
+	// Check if retention is set. If so, get all corresponding BR, else, return.
+	// TTL deletions happen regardless of whether retention fields are set or not
+
 	if b.Spec.Retention != nil {
 
 		lbls := map[string]string{
@@ -68,15 +106,31 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		}
 		allBuildRuns := &build.BuildRunList{}
 		r.client.List(ctx, allBuildRuns, &opts)
-		var buildRunSucceeded []build.BuildRun
-		var buildRunFailed []build.BuildRun
+
+		//Check ttls
+		// for _, br := range allBuildRuns.Items {
+		// 	if br.Spec.Retention.TtlAfterSucceeded != nil {
+		// 		if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterSucceeded.Duration).After(time.Now()) {
+		// 			DeleteBuildRun(ctx, r.client, &br, request)
+		// 		}
+		// 	}
+
+		// 	if br.Spec.Retention.TtlAfterFailed != nil {
+		// 		if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterFailed.Duration).After(time.Now()) {
+		// 			DeleteBuildRun(ctx, r.client, &br, request)
+		// 		}
+		// 	}
+		// }
+
+		// allBuildRuns = &build.BuildRunList{}
+		// r.client.List(ctx, allBuildRuns, &opts)
+		// Check limits
 		if b.Spec.Retention.FailedLimit != nil {
+			var buildRunFailed []build.BuildRun
 			for _, br := range allBuildRuns.Items {
 				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
 					buildRunFailed = append(buildRunFailed, br)
-					// ctxlog.Debug(ctx, "failed buildruns list", br)
 				}
-
 			}
 
 			if len(buildRunFailed) > int(*b.Spec.Retention.FailedLimit) {
@@ -86,35 +140,23 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 					return buildRunFailed[i].Status.CompletionTime.Before(buildRunFailed[j].Status.CompletionTime)
 				})
 				// Delete buildruns
-
 				failedLimit := *b.Spec.Retention.FailedLimit
 				lenBuildRun := len(buildRunFailed)
 				i := 0
 				for lenBuildRun > int(failedLimit) {
-					// lastTaskRun := &v1beta1.TaskRun{}
-					//getTaskRunErr := r.client.Get(ctx, types.NamespacedName{Name: buildRunFailed[i].Name, Namespace: request.Namespace}, lastTaskRun)
-					deleteBuildRunErr := r.client.Delete(ctx, &buildRunFailed[i], &client.DeleteOptions{})
-					if deleteBuildRunErr != nil {
-						ctxlog.Debug(ctx, "Error deleting buildRun - ", buildRunFailed[i].Name, err)
-					}
-					fmt.Println("Deleted BuildRun: ", buildRunFailed[i].Name)
-					// ctxlog.Debug(ctx, "Get task run result: ", lastTaskRun.Name, namespace)
+					fmt.Println("Deleting BuildRun: --------------------", buildRunFailed[i].Name)
+					DeleteBuildRun(ctx, r.client, &buildRunFailed[i], request)
 					lenBuildRun -= 1
 					i += 1
-					// get task run
-					// delete the task run
-					// delete build run
-					// poll to see if they are deleted <-?
-
 				}
 			}
 		}
 
 		if b.Spec.Retention.SucceededLimit != nil {
+			var buildRunSucceeded []build.BuildRun
 			for _, br := range allBuildRuns.Items {
 				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
 					buildRunSucceeded = append(buildRunSucceeded, br)
-					ctxlog.Debug(ctx, "succeeded buildruns list", br)
 				}
 			}
 			if len(buildRunSucceeded) > int(*b.Spec.Retention.SucceededLimit) {
@@ -127,32 +169,16 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 
 				i := 0
 				for lenBuildRun > int(succeededLimit) {
-					// lastTaskRun := &v1beta1.TaskRun{}
-					// getTaskRunErr := r.client.Get(ctx, types.NamespacedName{Name: *buildRunSucceeded[i].Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
-					// getTaskRunErr := buildRunSucceeded[i].Status.LatestTaskRunRef
-					deleteBuildRunErr := r.client.Delete(ctx, &buildRunSucceeded[i], &client.DeleteOptions{})
-					if deleteBuildRunErr != nil {
-						// ctxlog.Debug(ctx, "Error getting task run for - ", buildRunSucceeded[i], err)
-						ctxlog.Debug(ctx, "Error deleting buildRun - ", buildRunFailed[i].Name, err)
-						fmt.Println(buildRunSucceeded[i].Name)
-					}
-
-					// ctxlog.Debug(ctx, "Get task run result: ", lastTaskRun.Name, namespace)
-					fmt.Println("Deleted BuildRun: ", buildRunFailed[i].Name)
-
-					// 	// get task run
-					// 	// delete the task run
-					// 	// delete build run
-					// 	// poll to see if they are deleted <-?
-					i += 1
+					fmt.Println("Deleting BuildRun: --------------------", buildRunSucceeded[i].Name)
+					DeleteBuildRun(ctx, r.client, &buildRunSucceeded[i], request)
 					lenBuildRun -= 1
-
+					i += 1
 				}
-				fmt.Println("Task run end: -----")
 
 			}
-			// Delete Buildruns
 		}
+
+		// Iterate through all brs, check for ttl, delete if criterion met
 
 	}
 

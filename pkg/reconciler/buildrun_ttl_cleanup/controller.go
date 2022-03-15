@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package build_limit_cleanup
+package buildrun_ttl_cleanup
 
 import (
 	"context"
 
-	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/config"
 	"github.com/shipwright-io/build/pkg/ctxlog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,11 +29,11 @@ const (
 
 type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
-// Add creates a new Build Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new BuildRun Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(ctx context.Context, c *config.Config, mgr manager.Manager) error {
-	ctx = ctxlog.NewContext(ctx, "build-limit-cleanup-controller")
-	return add(ctx, mgr, NewReconciler(c, mgr, controllerutil.SetControllerReference), c.Controllers.Build.MaxConcurrentReconciles)
+	ctx = ctxlog.NewContext(ctx, "buildrun-ttl-cleanup-controller")
+	return add(ctx, mgr, NewReconciler(c, mgr, controllerutil.SetControllerReference), c.Controllers.BuildRun.MaxConcurrentReconciles)
 }
 
 func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxConcurrentReconciles int) error {
@@ -44,33 +44,29 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 
 	if maxConcurrentReconciles > 0 {
 		options.MaxConcurrentReconciles = maxConcurrentReconciles
+
 	}
 
-	// Create a new controller
-	c, err := controller.New("build-limit-cleanup-controller", mgr, options)
+	c, err := controller.New("buildrun-ttl-cleanup-controller", mgr, options)
 	if err != nil {
 		return err
 	}
 
-	pred := predicate.Funcs{
+	ctxlog.Debug(ctx, "start reconciling BuildRun-ttl.", namespace)
+
+	predBuildRun := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			n := e.ObjectNew.(*build.Build)
-			// Check if the Retention field exists
-			if n.Spec.Retention != nil {
-				return true
-			}
-			return false
+			// Check if retention -> ttl exists
+			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// Never reconcile on deletion, there is nothing we have to do
 			return false
 		},
 	}
-
-	// Watch for changes to primary resource Build
-	if err = c.Watch(&source.Kind{Type: &build.Build{}}, &handler.EnqueueRequestForObject{}, pred); err != nil {
+	// Watch for changes to primary resource BuildRun // Requeue after some time
+	if err = c.Watch(&source.Kind{Type: &buildv1alpha1.BuildRun{}}, &handler.EnqueueRequestForObject{}, predBuildRun); err != nil {
 		return err
 	}
-
 	return nil
 }
