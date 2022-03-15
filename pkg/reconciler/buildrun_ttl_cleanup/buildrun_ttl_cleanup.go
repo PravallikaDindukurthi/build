@@ -13,6 +13,7 @@ import (
 	"github.com/shipwright-io/build/pkg/config"
 	"github.com/shipwright-io/build/pkg/ctxlog"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -95,15 +96,21 @@ func (r *ReconcileBuildRunTtl) Reconcile(ctx context.Context, request reconcile.
 		}
 	}
 
-	if br.Spec.Retention.TtlAfterFailed != nil {
+	if br.Spec.Retention.TtlAfterFailed != nil && (br.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionFalse) {
 		if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterFailed.Duration).After(time.Now()) {
 			DeleteBuildRun(ctx, r.client, br, request)
+		} else {
+			timeLeft := br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterFailed.Duration).Sub(time.Now())
+			return reconcile.Result{Requeue: true, RequeueAfter: timeLeft}, nil
 		}
 	}
 
-	if br.Spec.Retention.TtlAfterSucceeded != nil {
+	if br.Spec.Retention.TtlAfterSucceeded != nil && (br.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionTrue) {
 		if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterSucceeded.Duration).After(time.Now()) {
 			DeleteBuildRun(ctx, r.client, br, request)
+		} else {
+			timeLeft := br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterSucceeded.Duration).Sub(time.Now())
+			return reconcile.Result{Requeue: true, RequeueAfter: timeLeft}, nil
 		}
 	}
 
