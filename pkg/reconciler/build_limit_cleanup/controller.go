@@ -53,6 +53,13 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 	}
 
 	pred := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			o := e.Object.(*build.Build)
+			if o.Spec.Retention != nil {
+				return true
+			}
+			return false
+		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*build.Build)
 			// Check if the Retention field exists

@@ -107,23 +107,6 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		allBuildRuns := &build.BuildRunList{}
 		r.client.List(ctx, allBuildRuns, &opts)
 
-		//Check ttls
-		// for _, br := range allBuildRuns.Items {
-		// 	if br.Spec.Retention.TtlAfterSucceeded != nil {
-		// 		if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterSucceeded.Duration).After(time.Now()) {
-		// 			DeleteBuildRun(ctx, r.client, &br, request)
-		// 		}
-		// 	}
-
-		// 	if br.Spec.Retention.TtlAfterFailed != nil {
-		// 		if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterFailed.Duration).After(time.Now()) {
-		// 			DeleteBuildRun(ctx, r.client, &br, request)
-		// 		}
-		// 	}
-		// }
-
-		// allBuildRuns = &build.BuildRunList{}
-		// r.client.List(ctx, allBuildRuns, &opts)
 		// Check limits
 		if b.Spec.Retention.FailedLimit != nil {
 			var buildRunFailed []build.BuildRun
