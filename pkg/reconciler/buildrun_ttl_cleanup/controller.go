@@ -52,19 +52,13 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		return err
 	}
 
-	ctxlog.Debug(ctx, "start reconciling BuildRun-ttl.", namespace)
+	ctxlog.Debug(ctx, "BuildRun-ttl - Controller.", namespace)
 
 	predBuildRun := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 
 			o := e.Object.(*buildv1alpha1.BuildRun)
 
-			// if (o.Spec.Retention != nil) &&
-			// 	((o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionFalse) ||
-			// 		(o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionTrue)) {
-			// 	return true
-			// 	//enqueue
-			// }
 			if o.Spec.Retention != nil {
 				return true
 				//enqueue
@@ -73,12 +67,7 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*buildv1alpha1.BuildRun)
-			// if (o.Spec.Retention != nil) &&
-			// 	((o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionFalse) ||
-			// 		(o.Status.GetCondition(buildv1alpha1.Succeeded).Status == corev1.ConditionTrue)) {
-			// 	return true
-			// 	//enqueue
-			// }
+
 			if o.Spec.Retention != nil {
 				return true
 				//enqueue
@@ -90,8 +79,7 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 			return false
 		},
 	}
-	// Watch for changes to primary resource BuildRun // Requeue after some time
-	// Requeue after completion_time + ttl - Now
+	// Watch for changes to primary resource BuildRun
 	if err = c.Watch(&source.Kind{Type: &buildv1alpha1.BuildRun{}}, &handler.EnqueueRequestForObject{}, predBuildRun); err != nil {
 		return err
 	}
