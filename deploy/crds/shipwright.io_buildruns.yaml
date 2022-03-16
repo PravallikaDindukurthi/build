@@ -305,14 +305,6 @@ spec:
                   - name
                   type: object
                 type: array
-              retention:
-                description: Contains information about retention params
-                properties:
-                  ttlAfterFailed:
-                    type: string
-                  ttlAfterSucceeded:
-                    type: string
-                type: object
               serviceAccount:
                 description: ServiceAccount refers to the kubernetes serviceaccount
                   which is used for resource control. Default serviceaccount will

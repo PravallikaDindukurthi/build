@@ -111,9 +111,13 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		if b.Spec.Retention.FailedLimit != nil {
 			var buildRunFailed []build.BuildRun
 			for _, br := range allBuildRuns.Items {
-				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
-					buildRunFailed = append(buildRunFailed, br)
+
+				if br.Status.GetCondition(build.Succeeded) != nil {
+					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
+						buildRunFailed = append(buildRunFailed, br)
+					}
 				}
+
 			}
 
 			if len(buildRunFailed) > int(*b.Spec.Retention.FailedLimit) {
@@ -138,9 +142,13 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		if b.Spec.Retention.SucceededLimit != nil {
 			var buildRunSucceeded []build.BuildRun
 			for _, br := range allBuildRuns.Items {
-				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
-					buildRunSucceeded = append(buildRunSucceeded, br)
+
+				if br.Status.GetCondition(build.Succeeded) != nil {
+					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
+						buildRunSucceeded = append(buildRunSucceeded, br)
+					}
 				}
+
 			}
 			if len(buildRunSucceeded) > int(*b.Spec.Retention.SucceededLimit) {
 				sort.Slice(buildRunSucceeded, func(i, j int) bool {

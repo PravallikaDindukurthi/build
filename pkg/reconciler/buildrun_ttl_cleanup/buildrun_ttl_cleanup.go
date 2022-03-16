@@ -108,25 +108,25 @@ func (r *ReconcileBuildRunTtl) Reconcile(ctx context.Context, request reconcile.
 	switch condition.Status {
 
 	case corev1.ConditionTrue:
-		if br.Spec.Retention.TtlAfterSucceeded != nil {
+		if br.Status.BuildSpec.Retention.TtlAfterSucceeded != nil {
 			fmt.Println("BR succeeded, reconciling Buildrun-ttl")
-			if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterSucceeded.Duration).Before(time.Now()) {
+			if br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterSucceeded.Duration).Before(time.Now()) {
 				DeleteBuildRun(ctx, r.client, br, request)
 			} else {
 				fmt.Println("BR succeeded, still time left before we can reconcile -")
-				timeLeft := br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterSucceeded.Duration).Sub(time.Now())
+				timeLeft := br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterSucceeded.Duration).Sub(time.Now())
 				return reconcile.Result{Requeue: true, RequeueAfter: timeLeft}, nil
 			}
 		}
 
 	case corev1.ConditionFalse:
-		if br.Spec.Retention.TtlAfterFailed != nil {
+		if br.Status.BuildSpec.Retention.TtlAfterFailed != nil {
 			fmt.Println("BR failed, reconciling Buildrun-ttl")
-			if br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterFailed.Duration).Before(time.Now()) {
+			if br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterFailed.Duration).Before(time.Now()) {
 				DeleteBuildRun(ctx, r.client, br, request)
 			} else {
 				fmt.Println("BR failed, still time left before we can reconcile - ")
-				timeLeft := br.Status.CompletionTime.Add(br.Spec.Retention.TtlAfterFailed.Duration).Sub(time.Now())
+				timeLeft := br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterFailed.Duration).Sub(time.Now())
 				return reconcile.Result{Requeue: true, RequeueAfter: timeLeft}, nil
 			}
 		}
