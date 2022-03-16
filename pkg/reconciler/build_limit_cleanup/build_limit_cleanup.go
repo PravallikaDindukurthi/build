@@ -111,6 +111,7 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		if b.Spec.Retention.FailedLimit != nil {
 			var buildRunFailed []build.BuildRun
 			for _, br := range allBuildRuns.Items {
+<<<<<<< HEAD
 				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
 					buildRunFailed = append(buildRunFailed, br)
 <<<<<<< HEAD
@@ -125,7 +126,15 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 >>>>>>> e0046d8e (Delete buildruns till limit is reached.)
 =======
 >>>>>>> 1a275132 (Added build-limit-cleanup-controller functionality and added a new controller)
+=======
+
+				if br.Status.GetCondition(build.Succeeded) != nil {
+					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
+						buildRunFailed = append(buildRunFailed, br)
+					}
+>>>>>>> eabb7944 (Changes to buildrun.spec. Using buildspec.retention instead.)
 				}
+
 			}
 
 			if len(buildRunFailed) > int(*b.Spec.Retention.FailedLimit) {
@@ -150,6 +159,7 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		if b.Spec.Retention.SucceededLimit != nil {
 			var buildRunSucceeded []build.BuildRun
 			for _, br := range allBuildRuns.Items {
+<<<<<<< HEAD
 				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
 					buildRunSucceeded = append(buildRunSucceeded, br)
 <<<<<<< HEAD
@@ -160,7 +170,15 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 >>>>>>> cc470c48 (Changes in controller)
 =======
 >>>>>>> 1a275132 (Added build-limit-cleanup-controller functionality and added a new controller)
+=======
+
+				if br.Status.GetCondition(build.Succeeded) != nil {
+					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
+						buildRunSucceeded = append(buildRunSucceeded, br)
+					}
+>>>>>>> eabb7944 (Changes to buildrun.spec. Using buildspec.retention instead.)
 				}
+
 			}
 			if len(buildRunSucceeded) > int(*b.Spec.Retention.SucceededLimit) {
 				sort.Slice(buildRunSucceeded, func(i, j int) bool {
