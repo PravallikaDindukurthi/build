@@ -24,7 +24,7 @@ import (
 
 // ReconcileBuildRun reconciles a BuildRun object
 
-type ReconcileBuildRunTtl struct {
+type ReconcileBuildRun struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	config                *config.Config
@@ -34,7 +34,7 @@ type ReconcileBuildRunTtl struct {
 }
 
 func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerReferenceFunc) reconcile.Reconciler {
-	return &ReconcileBuildRunTtl{
+	return &ReconcileBuildRun{
 		config:                c,
 		client:                mgr.GetClient(),
 		scheme:                mgr.GetScheme(),
@@ -43,7 +43,7 @@ func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerRefer
 }
 
 // GetBuildRunObject retrieves an existing BuildRun based on a name and namespace
-func (r *ReconcileBuildRunTtl) GetBuildRunObject(ctx context.Context, objectName string, objectNS string, buildRun *buildv1alpha1.BuildRun) error {
+func (r *ReconcileBuildRun) GetBuildRunObject(ctx context.Context, objectName string, objectNS string, buildRun *buildv1alpha1.BuildRun) error {
 	if err := r.client.Get(ctx, types.NamespacedName{Name: objectName, Namespace: objectNS}, buildRun); err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func DeleteBuildRun(ctx context.Context, rclient client.Client, br *buildv1alpha
 	return nil
 }
 
-func (r *ReconcileBuildRunTtl) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.if
 	ctx, cancel := context.WithTimeout(ctx, r.config.CtxTimeOut)
 	defer cancel()
@@ -126,14 +126,10 @@ func (r *ReconcileBuildRunTtl) Reconcile(ctx context.Context, request reconcile.
 				DeleteBuildRun(ctx, r.client, br, request)
 			} else {
 				timeLeft := br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterFailed.Duration).Sub(time.Now())
-
-				build := &buildv1alpha1.Build{}
-				r.client.Get(ctx, types.NamespacedName{Name: *&br.Spec.BuildRef.Name, Namespace: request.Namespace}, build)
-
 				return reconcile.Result{Requeue: true, RequeueAfter: timeLeft}, nil
 			}
 		}
 	}
-
+	ctxlog.Debug(ctx, "finishing reconciling request from a BuildRun event", namespace, request.Namespace, name, request.Name)
 	return reconcile.Result{}, nil
 }
