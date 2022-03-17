@@ -52,8 +52,6 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		return err
 	}
 
-	ctxlog.Debug(ctx, "BuildRun-ttl - Controller.", namespace)
-
 	predBuildRun := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 
