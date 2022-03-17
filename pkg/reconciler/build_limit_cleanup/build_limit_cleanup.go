@@ -6,7 +6,6 @@ package build_limit_cleanup
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"time"
 
@@ -44,17 +43,18 @@ func NewReconciler(c *config.Config, mgr manager.Manager, ownerRef setOwnerRefer
 	}
 }
 
-func DeleteBuildRun(ctx context.Context, rclient client.Client, br *build.BuildRun, request reconcile.Request) {
-	ctxlog.Info(ctx, "Delete build run: ", br.Name, namespace)
+func DeleteBuildRun(ctx context.Context, rclient client.Client, br *build.BuildRun, request reconcile.Request) error {
+
 	lastTaskRun := &v1beta1.TaskRun{}
 	getTaskRunErr := rclient.Get(ctx, types.NamespacedName{Name: *br.Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
 	if getTaskRunErr != nil {
 		ctxlog.Debug(ctx, "Error getting task run.")
 	}
+
 	deleteBuildRunErr := rclient.Delete(ctx, br, &client.DeleteOptions{})
 	if deleteBuildRunErr != nil {
 		ctxlog.Debug(ctx, "Error deleting buildRun.", br.Name, deleteBuildRunErr)
-		fmt.Println(br.Name)
+		return deleteBuildRunErr
 	}
 
 	err := wait.PollImmediate(1*time.Second, 10*time.Second, func() (done bool, err error) {
@@ -65,15 +65,16 @@ func DeleteBuildRun(ctx context.Context, rclient client.Client, br *build.BuildR
 	if err != nil {
 		ctxlog.Debug(ctx, "Error polling for deleting buildrun.")
 	}
+
 	err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (done bool, err error) {
-		lastTaskRun = &v1beta1.TaskRun{}
-		taskRunErr := rclient.Get(ctx, types.NamespacedName{Name: *br.Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
+		taskRunErr := rclient.Get(ctx, types.NamespacedName{Name: lastTaskRun.Name, Namespace: request.Namespace}, lastTaskRun)
 		return apierrors.IsNotFound(taskRunErr), nil
 	})
 	if err != nil {
-		ctxlog.Debug(ctx, "Error deleting the TaskRun..")
+		ctxlog.Debug(ctx, "Error deleting the TaskRun.")
 	}
-	//Return error
+
+	return nil
 }
 
 func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -106,70 +107,57 @@ func (r *ReconcileBuildLimit) Reconcile(ctx context.Context, request reconcile.R
 		}
 		allBuildRuns := &build.BuildRunList{}
 		r.client.List(ctx, allBuildRuns, &opts)
-
+		var buildRunFailed []build.BuildRun
+		var buildRunSucceeded []build.BuildRun
+		for _, br := range allBuildRuns.Items {
+			condition := br.Status.GetCondition(build.Succeeded)
+			if condition != nil {
+				if condition.Status == corev1.ConditionFalse {
+					buildRunFailed = append(buildRunFailed, br)
+				}
+				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
+					buildRunSucceeded = append(buildRunSucceeded, br)
+				}
+			}
+		}
 		// Check limits
 		if b.Spec.Retention.FailedLimit != nil {
-			var buildRunFailed []build.BuildRun
-			for _, br := range allBuildRuns.Items {
-
-				if br.Status.GetCondition(build.Succeeded) != nil {
-					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
-						buildRunFailed = append(buildRunFailed, br)
-					}
-				}
-
-			}
-
 			if len(buildRunFailed) > int(*b.Spec.Retention.FailedLimit) {
-
 				// Sort the buildRunFailed based on the Completion time
 				sort.Slice(buildRunFailed, func(i, j int) bool {
 					return buildRunFailed[i].Status.CompletionTime.Before(buildRunFailed[j].Status.CompletionTime)
 				})
 				// Delete buildruns
 				failedLimit := *b.Spec.Retention.FailedLimit
-				lenBuildRun := len(buildRunFailed)
+				lenOfList := len(buildRunFailed)
 				i := 0
-				for lenBuildRun > int(failedLimit) {
-					fmt.Println("Deleting BuildRun: --------------------", buildRunFailed[i].Name)
+				for lenOfList > int(failedLimit) {
 					DeleteBuildRun(ctx, r.client, &buildRunFailed[i], request)
-					lenBuildRun -= 1
+					lenOfList -= 1
 					i += 1
 				}
 			}
 		}
 
 		if b.Spec.Retention.SucceededLimit != nil {
-			var buildRunSucceeded []build.BuildRun
-			for _, br := range allBuildRuns.Items {
 
-				if br.Status.GetCondition(build.Succeeded) != nil {
-					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
-						buildRunSucceeded = append(buildRunSucceeded, br)
-					}
-				}
-
-			}
 			if len(buildRunSucceeded) > int(*b.Spec.Retention.SucceededLimit) {
 				sort.Slice(buildRunSucceeded, func(i, j int) bool {
 					return buildRunSucceeded[i].Status.CompletionTime.Before(buildRunSucceeded[j].Status.CompletionTime)
 				})
 
 				succeededLimit := *b.Spec.Retention.SucceededLimit
-				lenBuildRun := len(buildRunSucceeded)
+				lenOfList := len(buildRunSucceeded)
 
 				i := 0
-				for lenBuildRun > int(succeededLimit) {
-					fmt.Println("Deleting BuildRun: --------------------", buildRunSucceeded[i].Name)
+				for lenOfList > int(succeededLimit) {
 					DeleteBuildRun(ctx, r.client, &buildRunSucceeded[i], request)
-					lenBuildRun -= 1
+					lenOfList -= 1
 					i += 1
 				}
 
 			}
 		}
-
-		// Iterate through all brs, check for ttl, delete if criterion met
 
 	}
 

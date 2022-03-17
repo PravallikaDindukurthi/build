@@ -8,10 +8,14 @@ import (
 	"context"
 
 	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/config"
 	"github.com/shipwright-io/build/pkg/ctxlog"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -54,17 +58,41 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			o := e.Object.(*build.Build)
+			o := e.Object.(*buildv1alpha1.Build)
 			if o.Spec.Retention != nil {
 				return true
 			}
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			n := e.ObjectNew.(*build.Build)
+			n := e.ObjectNew.(*buildv1alpha1.Build)
 			// Check if the Retention field exists
 			if n.Spec.Retention != nil {
 				return true
+			}
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Never reconcile on deletion, there is nothing we have to do
+			return false
+		},
+	}
+
+	predBuildRun := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			// Never reconcile in case of create event
+			return false
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			n := e.ObjectNew.(*buildv1alpha1.BuildRun)
+			o := e.ObjectOld.(*buildv1alpha1.BuildRun)
+			oldCondition := o.Status.GetCondition(buildv1alpha1.Succeeded)
+			newCondition := n.Status.GetCondition(buildv1alpha1.Succeeded)
+			// Can we check with completion time?
+			if oldCondition != nil && newCondition != nil {
+				if (oldCondition.Status == corev1.ConditionUnknown) && (newCondition.Status == corev1.ConditionFalse || newCondition.Status == corev1.ConditionTrue) {
+					return true
+				}
 			}
 			return false
 		},
@@ -79,5 +107,20 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		return err
 	}
 
-	return nil
+	return c.Watch(&source.Kind{Type: &buildv1alpha1.BuildRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
+		buildRun := o.(*buildv1alpha1.BuildRun)
+		// check if Buildrun is related to a build
+		if buildRun.Spec.BuildRef.Name == "" {
+			return []reconcile.Request{}
+		}
+
+		return []reconcile.Request{
+			{
+				NamespacedName: types.NamespacedName{
+					Name:      buildRun.Spec.BuildRef.Name,
+					Namespace: buildRun.Namespace,
+				},
+			},
+		}
+	}), predBuildRun)
 }
