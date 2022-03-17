@@ -6,7 +6,6 @@ package buildrun_ttl_cleanup
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
@@ -51,17 +50,18 @@ func (r *ReconcileBuildRunTtl) GetBuildRunObject(ctx context.Context, objectName
 	return nil
 }
 
-func DeleteBuildRun(ctx context.Context, rclient client.Client, br *buildv1alpha1.BuildRun, request reconcile.Request) {
-	ctxlog.Info(ctx, "Delete build run: ", br.Name, namespace)
+func DeleteBuildRun(ctx context.Context, rclient client.Client, br *buildv1alpha1.BuildRun, request reconcile.Request) error {
+
 	lastTaskRun := &v1beta1.TaskRun{}
 	getTaskRunErr := rclient.Get(ctx, types.NamespacedName{Name: *br.Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
 	if getTaskRunErr != nil {
 		ctxlog.Debug(ctx, "Error getting task run.")
 	}
+
 	deleteBuildRunErr := rclient.Delete(ctx, br, &client.DeleteOptions{})
 	if deleteBuildRunErr != nil {
 		ctxlog.Debug(ctx, "Error deleting buildRun.", br.Name, deleteBuildRunErr)
-		fmt.Println(br.Name)
+		return deleteBuildRunErr
 	}
 
 	err := wait.PollImmediate(1*time.Second, 10*time.Second, func() (done bool, err error) {
@@ -72,15 +72,16 @@ func DeleteBuildRun(ctx context.Context, rclient client.Client, br *buildv1alpha
 	if err != nil {
 		ctxlog.Debug(ctx, "Error polling for deleting buildrun.")
 	}
+
 	err = wait.PollImmediate(1*time.Second, 10*time.Second, func() (done bool, err error) {
-		lastTaskRun = &v1beta1.TaskRun{}
-		taskRunErr := rclient.Get(ctx, types.NamespacedName{Name: *br.Status.LatestTaskRunRef, Namespace: request.Namespace}, lastTaskRun)
+		taskRunErr := rclient.Get(ctx, types.NamespacedName{Name: lastTaskRun.Name, Namespace: request.Namespace}, lastTaskRun)
 		return apierrors.IsNotFound(taskRunErr), nil
 	})
 	if err != nil {
-		ctxlog.Debug(ctx, "Error deleting the TaskRun..")
+		ctxlog.Debug(ctx, "Error deleting the TaskRun.")
 	}
-	//Return error
+
+	return nil
 }
 
 func (r *ReconcileBuildRunTtl) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
@@ -109,11 +110,10 @@ func (r *ReconcileBuildRunTtl) Reconcile(ctx context.Context, request reconcile.
 
 	case corev1.ConditionTrue:
 		if br.Status.BuildSpec.Retention.TtlAfterSucceeded != nil {
-			fmt.Println("BR succeeded, reconciling Buildrun-ttl")
 			if br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterSucceeded.Duration).Before(time.Now()) {
+				ctxlog.Info(ctx, "Deleting successful buildrun as ttl has been reached.", namespace, request.Namespace, name, request.Name)
 				DeleteBuildRun(ctx, r.client, br, request)
 			} else {
-				fmt.Println("BR succeeded, still time left before we can reconcile -")
 				timeLeft := br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterSucceeded.Duration).Sub(time.Now())
 				return reconcile.Result{Requeue: true, RequeueAfter: timeLeft}, nil
 			}
@@ -121,12 +121,15 @@ func (r *ReconcileBuildRunTtl) Reconcile(ctx context.Context, request reconcile.
 
 	case corev1.ConditionFalse:
 		if br.Status.BuildSpec.Retention.TtlAfterFailed != nil {
-			fmt.Println("BR failed, reconciling Buildrun-ttl")
 			if br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterFailed.Duration).Before(time.Now()) {
+				ctxlog.Info(ctx, "Deleting failed buildrun as ttl has been reached.", namespace, request.Namespace, name, request.Name)
 				DeleteBuildRun(ctx, r.client, br, request)
 			} else {
-				fmt.Println("BR failed, still time left before we can reconcile - ")
 				timeLeft := br.Status.CompletionTime.Add(br.Status.BuildSpec.Retention.TtlAfterFailed.Duration).Sub(time.Now())
+
+				build := &buildv1alpha1.Build{}
+				r.client.Get(ctx, types.NamespacedName{Name: *&br.Spec.BuildRef.Name, Namespace: request.Namespace}, build)
+
 				return reconcile.Result{Requeue: true, RequeueAfter: timeLeft}, nil
 			}
 		}
