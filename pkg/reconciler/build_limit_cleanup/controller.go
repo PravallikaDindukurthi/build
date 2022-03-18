@@ -66,7 +66,6 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*buildv1alpha1.Build)
-			// Check if the Retention field exists
 			if n.Spec.Retention != nil {
 				return true
 			}
@@ -80,7 +79,7 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 
 	predBuildRun := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			// Never reconcile in case of create event
+			// Never reconcile in case of create buildrun event
 			return false
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -88,10 +87,12 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 			o := e.ObjectOld.(*buildv1alpha1.BuildRun)
 			oldCondition := o.Status.GetCondition(buildv1alpha1.Succeeded)
 			newCondition := n.Status.GetCondition(buildv1alpha1.Succeeded)
-			// Can we check with completion time?
 			if oldCondition != nil && newCondition != nil {
-				if (oldCondition.Status == corev1.ConditionUnknown) && (newCondition.Status == corev1.ConditionFalse || newCondition.Status == corev1.ConditionTrue) {
-					return true
+				if (oldCondition.Status == corev1.ConditionUnknown) &&
+					(newCondition.Status == corev1.ConditionFalse || newCondition.Status == corev1.ConditionTrue) {
+					if n.Status.BuildSpec != nil && n.Status.BuildSpec.Retention != nil {
+						return true
+					}
 				}
 			}
 			return false
@@ -107,6 +108,7 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		return err
 	}
 
+	// Watch for changes to resource BuildRun
 	return c.Watch(&source.Kind{Type: &buildv1alpha1.BuildRun{}}, handler.EnqueueRequestsFromMapFunc(func(o client.Object) []reconcile.Request {
 		buildRun := o.(*buildv1alpha1.BuildRun)
 		// check if Buildrun is related to a build
