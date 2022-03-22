@@ -69,42 +69,10 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 		}
 		allBuildRuns := &build.BuildRunList{}
 		r.client.List(ctx, allBuildRuns, &opts)
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-		// Check limits
-		if b.Spec.Retention.FailedLimit != nil {
-			var buildRunFailed []build.BuildRun
-			for _, br := range allBuildRuns.Items {
-<<<<<<< HEAD
-				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
-					buildRunFailed = append(buildRunFailed, br)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-					// ctxlog.Debug(ctx, "Failed Build Run. BuildRun name: ", br.Name, namespace)
-=======
-					ctxlog.Debug(ctx, "failed buildruns list", br)
->>>>>>> cc470c48 (Changes in controller)
-=======
-					// ctxlog.Debug(ctx, "failed buildruns list", br)
->>>>>>> e0046d8e (Delete buildruns till limit is reached.)
-=======
->>>>>>> 1a275132 (Added build-limit-cleanup-controller functionality and added a new controller)
-=======
-
-				if br.Status.GetCondition(build.Succeeded) != nil {
-					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionFalse {
-						buildRunFailed = append(buildRunFailed, br)
-					}
->>>>>>> eabb7944 (Changes to buildrun.spec. Using buildspec.retention instead.)
-=======
-=======
 		if len(allBuildRuns.Items) == 0 {
 			return reconcile.Result{}, nil
 		}
 
->>>>>>> e202a4cb (Made some cleanup and log related changes)
 		var buildRunFailed []build.BuildRun
 		var buildRunSucceeded []build.BuildRun
 		for _, br := range allBuildRuns.Items {
@@ -114,43 +82,12 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 					buildRunFailed = append(buildRunFailed, br)
 				} else if condition.Status == corev1.ConditionTrue {
 					buildRunSucceeded = append(buildRunSucceeded, br)
->>>>>>> e55875d4 (Watch for buildrun completion in build-limit-cleanup controller.)
 				}
 			}
 		}
 
 		// Check limits
 		if b.Spec.Retention.SucceededLimit != nil {
-<<<<<<< HEAD
-<<<<<<< HEAD
-			var buildRunSucceeded []build.BuildRun
-			for _, br := range allBuildRuns.Items {
-<<<<<<< HEAD
-				if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
-					buildRunSucceeded = append(buildRunSucceeded, br)
-<<<<<<< HEAD
-<<<<<<< HEAD
-					// ctxlog.Debug(ctx, "Succeeded Build Run. BuildRun name: ", br, namespace)
-=======
-					ctxlog.Debug(ctx, "succeeded buildruns list", br)
->>>>>>> cc470c48 (Changes in controller)
-=======
->>>>>>> 1a275132 (Added build-limit-cleanup-controller functionality and added a new controller)
-=======
-
-				if br.Status.GetCondition(build.Succeeded) != nil {
-					if br.Status.GetCondition(build.Succeeded).Status == corev1.ConditionTrue {
-						buildRunSucceeded = append(buildRunSucceeded, br)
-					}
->>>>>>> eabb7944 (Changes to buildrun.spec. Using buildspec.retention instead.)
-				}
-
-			}
-=======
-
->>>>>>> e55875d4 (Watch for buildrun completion in build-limit-cleanup controller.)
-=======
->>>>>>> e202a4cb (Made some cleanup and log related changes)
 			if len(buildRunSucceeded) > int(*b.Spec.Retention.SucceededLimit) {
 				sort.Slice(buildRunSucceeded, func(i, j int) bool {
 					return buildRunSucceeded[i].Status.CompletionTime.Before(buildRunSucceeded[j].Status.CompletionTime)
