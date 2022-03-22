@@ -157,7 +157,7 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 				})
 				lenOfList := len(buildRunSucceeded)
 				for i := 0; lenOfList-i > int(*b.Spec.Retention.SucceededLimit); i += 1 {
-					ctxlog.Info(ctx, "Deleting Succeeded buildrun as cleanup limit has been reached.", namespace, request.Namespace, name, buildRunFailed[i].Name)
+					ctxlog.Info(ctx, "Deleting Succeeded buildrun as cleanup limit has been reached.", namespace, request.Namespace, name, buildRunSucceeded[i].Name)
 					deleteBuildRunErr := r.client.Delete(ctx, &buildRunSucceeded[i], &client.DeleteOptions{})
 					if deleteBuildRunErr != nil {
 						ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, &buildRunSucceeded[i].Name, deleteError, deleteBuildRunErr)
