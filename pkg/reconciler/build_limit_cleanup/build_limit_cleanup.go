@@ -6,6 +6,7 @@ package build_limit_cleanup
 
 import (
 	"context"
+	"fmt"
 	"sort"
 
 	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
@@ -94,10 +95,9 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 				lenOfList := len(buildRunSucceeded)
 				for i := 0; lenOfList-i > int(*b.Spec.Retention.SucceededLimit); i += 1 {
 					ctxlog.Info(ctx, "Deleting Succeeded buildrun as cleanup limit has been reached.", namespace, request.Namespace, name, buildRunFailed[i].Name)
-					br := &buildRunSucceeded[i]
-					deleteBuildRunErr := r.client.Delete(ctx, br, &client.DeleteOptions{})
+					deleteBuildRunErr := r.client.Delete(ctx, &buildRunSucceeded[i], &client.DeleteOptions{})
 					if deleteBuildRunErr != nil {
-						ctxlog.Debug(ctx, "Error deleting buildRun.", br.Name, deleteBuildRunErr)
+						ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, &buildRunSucceeded[i].Name, deleteError, deleteBuildRunErr)
 						return reconcile.Result{}, nil
 					}
 				}
@@ -110,12 +110,12 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 					return buildRunFailed[i].Status.CompletionTime.Before(buildRunFailed[j].Status.CompletionTime)
 				})
 				lenOfList := len(buildRunFailed)
+				fmt.Println(lenOfList)
 				for i := 0; lenOfList-i > int(*b.Spec.Retention.FailedLimit); i += 1 {
 					ctxlog.Info(ctx, "Deleting failed buildrun as cleanup limit has been reached.", namespace, request.Namespace, name, buildRunFailed[i].Name)
-					br := &buildRunFailed[i]
-					deleteBuildRunErr := r.client.Delete(ctx, br, &client.DeleteOptions{})
+					deleteBuildRunErr := r.client.Delete(ctx, &buildRunFailed[i], &client.DeleteOptions{})
 					if deleteBuildRunErr != nil {
-						ctxlog.Debug(ctx, "Error deleting buildRun.", br.Name, deleteBuildRunErr)
+						ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, buildRunFailed[i].Name, deleteError, deleteBuildRunErr)
 						return reconcile.Result{}, nil
 					}
 				}
