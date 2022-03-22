@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	namespace string = "namespace"
-	name      string = "name"
+	namespace   string = "namespace"
+	name        string = "name"
+	deleteError string = "error"
 )
 
 type setOwnerReferenceFunc func(owner, object metav1.Object, scheme *runtime.Scheme) error

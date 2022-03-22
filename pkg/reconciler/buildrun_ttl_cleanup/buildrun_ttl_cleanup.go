@@ -78,7 +78,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 				ctxlog.Info(ctx, "Deleting successful buildrun as ttl has been reached.", namespace, request.Namespace, name, request.Name)
 				deleteBuildRunErr := r.client.Delete(ctx, br, &client.DeleteOptions{})
 				if deleteBuildRunErr != nil {
-					ctxlog.Debug(ctx, "Error deleting buildRun.", br.Name, deleteBuildRunErr)
+					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, br.Name, deleteError, deleteBuildRunErr)
 					return reconcile.Result{}, deleteBuildRunErr
 				}
 			} else {
@@ -93,7 +93,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 				ctxlog.Info(ctx, "Deleting failed buildrun as ttl has been reached.", namespace, request.Namespace, name, request.Name)
 				deleteBuildRunErr := r.client.Delete(ctx, br, &client.DeleteOptions{})
 				if deleteBuildRunErr != nil {
-					ctxlog.Debug(ctx, "Error deleting buildRun.", br.Name, deleteBuildRunErr)
+					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, br.Name, deleteError, deleteBuildRunErr)
 					return reconcile.Result{}, deleteBuildRunErr
 				}
 			} else {
