@@ -52,7 +52,7 @@ Well-known strategies can be bootstrapped from [here](../samples/buildstrategy).
 
 | Name | Supported platforms |
 | ---- | ------------------- |
-| [buildah](../samples/buildstrategy/buildah/buildstrategy_buildah_cr.yaml) | linux/amd64 only |
+| [buildah](../samples/buildstrategy/buildah/buildstrategy_buildah_cr.yaml) | all |
 | [BuildKit](../samples/buildstrategy/buildkit/buildstrategy_buildkit_cr.yaml) | all |
 | [buildpacks-v3-heroku](../samples/buildstrategy/buildpacks-v3/buildstrategy_buildpacks-v3-heroku_cr.yaml) | linux/amd64 only |
 | [buildpacks-v3](../samples/buildstrategy/buildpacks-v3/buildstrategy_buildpacks-v3_cr.yaml) | linux/amd64 only |
@@ -480,7 +480,7 @@ metadata:
 spec:
   buildSteps:
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v1.7.0
+      image: gcr.io/kaniko-project/executor:v1.8.0
       workingDir: $(params.shp-source-root)
       securityContext:
         runAsUser: 0
@@ -524,7 +524,7 @@ metadata:
 spec:
   buildSteps:
     - name: build-and-push
-      image: gcr.io/kaniko-project/executor:v1.7.0
+      image: gcr.io/kaniko-project/executor:v1.8.0
       workingDir: $(params.shp-source-root)
       securityContext:
         runAsUser: 0

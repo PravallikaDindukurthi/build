@@ -26,6 +26,9 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# GINKGO is the path to the ginkgo cli
+GINKGO ?= $(shell which ginkgo)
+
 # configure zap based logr
 ZAP_FLAGS ?= --zap-log-level=debug --zap-encoder=console
 
@@ -36,7 +39,7 @@ TEST_NAMESPACE ?= default
 TEKTON_VERSION ?= v0.30.0
 
 # E2E test flags
-TEST_E2E_FLAGS ?= -failFast -p -randomizeAllSpecs -slowSpecThreshold=300 -timeout=30m -progress -stream -trace -v
+TEST_E2E_FLAGS ?= --fail-fast -p --randomize-all --slow-spec-threshold=5m -timeout=1h -progress -trace -v
 
 # E2E test service account name to be used for the build runs, can be set to generated to use the generated service account feature
 TEST_E2E_SERVICEACCOUNT_NAME ?= pipeline
@@ -83,7 +86,7 @@ $(CONTROLLER):
 	go build -trimpath $(GO_FLAGS) -o $(CONTROLLER) cmd/shipwright-build-controller/main.go
 
 .PHONY: build-plain
-build-plain: 
+build-plain:
 	go build -trimpath $(GO_FLAGS) -o $(CONTROLLER) cmd/shipwright-build-controller/main.go
 
 .PHONY: build-image
@@ -111,19 +114,16 @@ verify-generate: generate
 	@hack/verify-generate.sh
 
 ginkgo:
-ifeq (, $(shell which ginkgo))
+ifeq (, $(GINKGO))
+  ifeq (, $(shell which ginkgo))
 	@{ \
 	set -e ;\
-	GINKGO_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$GINKGO_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go install github.com/onsi/ginkgo/ginkgo@latest ;\
-	go install github.com/onsi/gomega/... ;\
-	rm -rf $$GINKGO_GEN_TMP_DIR ;\
+	go install github.com/onsi/ginkgo/v2/ginkgo@latest ;\
 	}
-GINKGO=$(GOBIN)/ginkgo
-else
-GINKGO=$(shell which ginkgo)
+  override GINKGO=$(GOBIN)/ginkgo
+  else
+  override GINKGO=$(shell which ginkgo)
+  endif
 endif
 
 gocov:
@@ -173,11 +173,11 @@ test-unit-coverage: test-unit gocov
 .PHONY: test-unit-ginkgo
 test-unit-ginkgo: ginkgo
 	GO111MODULE=on $(GINKGO) \
-		-randomizeAllSpecs \
-		-randomizeSuites \
-		-failOnPending \
+		--randomize-all \
+		--randomize-suites \
+		--fail-on-pending \
+		--slow-spec-threshold=4m \
 		-compilers=2 \
-		-slowSpecThreshold=240 \
 		-race \
 		-trace \
 		cmd/... \
@@ -187,10 +187,10 @@ test-unit-ginkgo: ginkgo
 .PHONY: test-integration
 test-integration: install-apis ginkgo
 	GO111MODULE=on $(GINKGO) \
-		-randomizeAllSpecs \
-		-randomizeSuites \
-		-failOnPending \
-		-slowSpecThreshold=240 \
+		--randomize-all \
+		--randomize-suites \
+		--fail-on-pending \
+		--slow-spec-threshold=4m \
 		-trace \
 		test/integration/...
 
