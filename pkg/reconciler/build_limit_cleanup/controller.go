@@ -60,17 +60,11 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*buildv1alpha1.Build)
-			if o.Spec.Retention != nil {
-				return true
-			}
-			return false
+			return o.Spec.Retention != nil
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*buildv1alpha1.Build)
-			if n.Spec.Retention != nil {
-				return true
-			}
-			return false
+			return n.Spec.Retention != nil
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// Never reconcile on deletion, there is nothing we have to do
