@@ -54,7 +54,7 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 
 		BeforeEach(func() {
 			buildSample = []byte(test.MinimalBuildWithRetentionTTL)
-			buildRunSample = []byte(test.MinimalBuildRunRetentionTTL)
+			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
 		It("Should not find the buildrun after few seconds after it succeeds", func() {
@@ -79,7 +79,7 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 
 		BeforeEach(func() {
 			buildSample = []byte(test.MinimalBuildWithRetentionTTLFail)
-			buildRunSample = []byte(test.MinimalBuildRunRetentionTTLFail)
+			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
 		It("Should not find the buildrun after few seconds after it fails", func() {
@@ -100,11 +100,11 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 		})
 	})
 
-	Context("when a build with a small limit set and buildrun succeeds", func() {
+	Context("when a build with a small limit set and buildrun succeeds - limit ", func() {
 
 		BeforeEach(func() {
-			buildSample = []byte(test.MinimalBuildWithRetentionLimit)
-			buildRunSample = []byte(test.MinimalBuildRunRetentionLimit)
+			buildSample = []byte(test.MinimalBuildWithRetentionLimit0)
+			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
 		It("Should not find the buildrun after few seconds after it succeeds", func() {
@@ -116,7 +116,7 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 
 			Expect(tb.CreateBR(buildRunObject)).To(BeNil())
 
-			_, err := tb.GetBRTillCompletion(buildRunObject.Name)
+			_, err := tb.GetBRTillNotFound(buildRunObject.Name)
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 			_, err = tb.GetBR(buildObject.Name)
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
@@ -127,7 +127,7 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 
 		BeforeEach(func() {
 			buildSample = []byte(test.MinimalBuildWithRetentionLimit)
-			buildRunSample = []byte(test.MinimalBuildRunRetentionLimit)
+			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
 		It("Should not find the buildrun after few seconds after it succeeds", func() {
@@ -161,7 +161,7 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 
 		BeforeEach(func() {
 			buildSample = []byte(test.MinimalBuildWithRetentionLimitFail)
-			buildRunSample = []byte(test.MinimalBuildRunRetentionLimitFail)
+			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
 		It("Should not find the buildrun after few seconds after it fails", func() {

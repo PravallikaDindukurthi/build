@@ -201,9 +201,9 @@ spec:
     name: foobar
 `
 
-// MinimalBuildRun defines a minimal BuildRun
-// with a reference to a not existing Build
-const MinimalBuildRunRetentionTTL = `
+// MinimalBuildRunRetention defines a minimal BuildRun
+// with a reference used to test retention fields
+const MinimalBuildRunRetention = `
 apiVersion: shipwright.io/v1alpha1
 kind: BuildRun
 metadata:
@@ -211,32 +211,4 @@ metadata:
 spec:
   buildRef:
     name: build-retention-ttl
-`
-
-const MinimalBuildRunRetentionTTLFail = `
-apiVersion: shipwright.io/v1alpha1
-kind: BuildRun
-metadata:
-  name: buidrun-retention-ttl
-spec:
-  buildRef:
-    name: build-retention-ttl-fail
-`
-const MinimalBuildRunRetentionLimit = `
-apiVersion: shipwright.io/v1alpha1
-kind: BuildRun
-metadata:
-  name: buidrun-retention-limit
-spec:
-  buildRef:
-    name: build-retention-limit
-`
-const MinimalBuildRunRetentionLimitFail = `
-apiVersion: shipwright.io/v1alpha1
-kind: BuildRun
-metadata:
-  generateName: buidrun-retention-limit-
-spec:
-  buildRef:
-    name: build-retention-limit
 `

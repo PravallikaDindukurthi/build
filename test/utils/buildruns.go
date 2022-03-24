@@ -108,6 +108,41 @@ func (t *TestBuild) GetBRTillCompletion(name string) (*v1alpha1.BuildRun, error)
 	return brInterface.Get(context.TODO(), name, metav1.GetOptions{})
 }
 
+// GetBRTillCompletion returns a BuildRun that have a CompletionTime set.
+// If the timeout is reached or it fails when retrieving the BuildRun it will
+// stop polling and return
+func (t *TestBuild) GetBRTillNotFound(name string) (*v1alpha1.BuildRun, error) {
+
+	var (
+		pollBRTillCompletion = func() (bool, error) {
+
+			bInterface := t.BuildClientSet.ShipwrightV1alpha1().BuildRuns(t.Namespace)
+
+			buildRun, err := bInterface.Get(context.TODO(), name, metav1.GetOptions{})
+			if err != nil && apierrors.IsNotFound(err) {
+				return true, err
+			}
+			if err != nil && !apierrors.IsNotFound(err) {
+				return false, err
+			}
+			if buildRun.Status.CompletionTime != nil {
+				return true, nil
+			}
+
+			return false, nil
+		}
+	)
+
+	brInterface := t.BuildClientSet.ShipwrightV1alpha1().BuildRuns(t.Namespace)
+
+	err := wait.PollImmediate(t.Interval, t.TimeOut, pollBRTillCompletion)
+	if err != nil {
+		return nil, err
+	}
+
+	return brInterface.Get(context.TODO(), name, metav1.GetOptions{})
+}
+
 // GetBRTillNotOwner returns a BuildRun that has not an owner.
 // If the timeout is reached or it fails when retrieving the BuildRun it will
 // stop polling and return
