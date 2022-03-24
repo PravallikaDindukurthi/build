@@ -54,6 +54,8 @@ const (
 	RemoteRepositoryUnreachable BuildReason = "RemoteRepositoryUnreachable"
 	// BuildNameInvalid indicates the build name is invalid
 	BuildNameInvalid BuildReason = "BuildNameInvalid"
+	// WrongRetentionParameterType indicates the build retention parameters are wrong
+	WrongRetentionParameterType BuildReason = "WrongRetentionParameterType"
 	// AllValidationsSucceeded indicates a Build was successfully validated
 	AllValidationsSucceeded = "all validations succeeded"
 )
@@ -222,8 +224,8 @@ type BuildList struct {
 
 // Retention struct for builds.
 type BuildRetention struct {
-	FailedLimit       *uint            `json:"failedLimit,omitempty"`
-	SucceededLimit    *uint            `json:"succeededLimit,omitempty"`
+	FailedLimit       *int             `json:"failedLimit,omitempty"`
+	SucceededLimit    *int             `json:"succeededLimit,omitempty"`
 	TtlAfterFailed    *metav1.Duration `json:"ttlAfterFailed,omitempty"`
 	TtlAfterSucceeded *metav1.Duration `json:"ttlAfterSucceeded,omitempty"`
 }

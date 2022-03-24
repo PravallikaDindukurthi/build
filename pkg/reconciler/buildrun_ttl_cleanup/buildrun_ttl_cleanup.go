@@ -60,7 +60,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 	if err != nil {
 		if !apierrors.IsNotFound(err) {
 			ctxlog.Debug(ctx, "finish reconciling buildrun-ttl. buildrun was not found", namespace, request.Namespace, name, request.Name)
-			return reconcile.Result{}, err
+			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	}

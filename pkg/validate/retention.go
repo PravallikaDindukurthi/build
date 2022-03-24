@@ -6,11 +6,9 @@ package validate
 
 import (
 	"context"
-	"strings"
+	"fmt"
 
 	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
-
-	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/pointer"
 )
 
@@ -20,13 +18,21 @@ type RetentionRef struct {
 	Build *build.Build // build instance for analysis
 }
 
-// ValidatePath implements BuildPath interface and validates
-// that build name is a valid label value
 func (r *RetentionRef) ValidatePath(_ context.Context) error {
-	if errs := validation.IsValidLabelValue(r.Build.Name); len(errs) > 0 {
-		r.Build.Status.Reason = build.BuildReasonPtr(build.BuildNameInvalid)
-		r.Build.Status.Message = pointer.String(strings.Join(errs, ", "))
-	}
 
+	// Validate if retention limit is non-negative
+	if r.Build.Spec.Retention != nil {
+		if r.Build.Spec.Retention.FailedLimit != nil && *r.Build.Spec.Retention.FailedLimit <= 0 {
+			r.Build.Status.Reason = build.BuildReasonPtr(build.WrongRetentionParameterType)
+			r.Build.Status.Message = pointer.String(fmt.Sprintf("Build Failed Limit : %d, Positive values should be provided", r.Build.Spec.Retention.FailedLimit))
+
+		}
+
+		if r.Build.Spec.Retention.SucceededLimit != nil && *r.Build.Spec.Retention.SucceededLimit <= 0 {
+			r.Build.Status.Reason = build.BuildReasonPtr(build.WrongParameterValueType)
+			r.Build.Status.Message = pointer.String(fmt.Sprintf("Build Suceeded Limit : %d, Positive values should be provided", r.Build.Spec.Retention.SucceededLimit))
+		}
+
+	}
 	return nil
 }

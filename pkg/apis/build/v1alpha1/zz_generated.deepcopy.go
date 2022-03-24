@@ -102,12 +102,12 @@ func (in *BuildRetention) DeepCopyInto(out *BuildRetention) {
 	*out = *in
 	if in.FailedLimit != nil {
 		in, out := &in.FailedLimit, &out.FailedLimit
-		*out = new(uint)
+		*out = new(int)
 		**out = **in
 	}
 	if in.SucceededLimit != nil {
 		in, out := &in.SucceededLimit, &out.SucceededLimit
-		*out = new(uint)
+		*out = new(int)
 		**out = **in
 	}
 	if in.TtlAfterFailed != nil {

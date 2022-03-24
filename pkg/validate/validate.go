@@ -66,7 +66,7 @@ func NewValidation(
 	case Envs:
 		return &Env{Build: build}, nil
 	case Retention:
-		return &Env{Build: build}, nil
+		return &RetentionRef{Build: build}, nil
 	default:
 		return nil, fmt.Errorf("unknown validation type")
 	}
