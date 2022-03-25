@@ -344,6 +344,8 @@ spec:
     args:
     - $(params.sleep-time)
 `
+
+// Use a simple strategy that does not push the image
 const ClusterBuildStrategySingleStepNoPush = `
 apiVersion: shipwright.io/v1alpha1
 kind: ClusterBuildStrategy

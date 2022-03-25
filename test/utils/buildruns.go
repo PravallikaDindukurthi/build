@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -108,34 +109,24 @@ func (t *TestBuild) GetBRTillCompletion(name string) (*v1alpha1.BuildRun, error)
 	return brInterface.Get(context.TODO(), name, metav1.GetOptions{})
 }
 
-// GetBRTillCompletion returns a BuildRun that have a CompletionTime set.
-// If the timeout is reached or it fails when retrieving the BuildRun it will
-// stop polling and return
-func (t *TestBuild) GetBRTillNotFound(name string) (*v1alpha1.BuildRun, error) {
+// GetBRTillNotFound waits for the buildrun to get deleted. It returns an error if BuildRun is not found
+func (t *TestBuild) GetBRTillNotFound(name string, interval time.Duration, timeout time.Duration) (*v1alpha1.BuildRun, error) {
 
 	var (
-		pollBRTillCompletion = func() (bool, error) {
+		GetBRTillNotFound = func() (bool, error) {
 
 			bInterface := t.BuildClientSet.ShipwrightV1alpha1().BuildRuns(t.Namespace)
-
-			buildRun, err := bInterface.Get(context.TODO(), name, metav1.GetOptions{})
+			_, err := bInterface.Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil && apierrors.IsNotFound(err) {
 				return true, err
 			}
-			if err != nil && !apierrors.IsNotFound(err) {
-				return false, err
-			}
-			if buildRun.Status.CompletionTime != nil {
-				return true, nil
-			}
-
 			return false, nil
 		}
 	)
 
 	brInterface := t.BuildClientSet.ShipwrightV1alpha1().BuildRuns(t.Namespace)
 
-	err := wait.PollImmediate(t.Interval, t.TimeOut, pollBRTillCompletion)
+	err := wait.PollImmediate(interval, timeout, GetBRTillNotFound)
 	if err != nil {
 		return nil, err
 	}
