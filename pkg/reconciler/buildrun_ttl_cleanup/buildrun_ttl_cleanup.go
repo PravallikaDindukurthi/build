@@ -48,6 +48,8 @@ func (r *ReconcileBuildRun) GetBuildRunObject(ctx context.Context, objectName st
 	return nil
 }
 
+/* Reconciler makes sure the buildrun adheres to its ttl retention field and deletes it
+   once the ttl limit is hit */
 func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	// Set the ctx to be Background, as the top-level context for incoming requests.if
 	ctx, cancel := context.WithTimeout(ctx, r.config.CtxTimeOut)
@@ -58,7 +60,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 	br := &buildv1alpha1.BuildRun{}
 	err := r.GetBuildRunObject(ctx, request.Name, request.Namespace, br)
 	if err != nil {
-		if !apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			ctxlog.Debug(ctx, "finish reconciling buildrun-ttl. buildrun was not found", namespace, request.Namespace, name, request.Name)
 			return reconcile.Result{}, nil
 		}
@@ -70,6 +72,8 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, nil
 	}
 
+	// In case ttl has been reached, delete the buildrun, if not,
+	// calculate the remaining time and requeue the buildrun
 	switch condition.Status {
 
 	case corev1.ConditionTrue:
@@ -78,6 +82,9 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 				ctxlog.Info(ctx, "Deleting successful buildrun as ttl has been reached.", namespace, request.Namespace, name, request.Name)
 				deleteBuildRunErr := r.client.Delete(ctx, br, &client.DeleteOptions{})
 				if deleteBuildRunErr != nil {
+					if apierrors.IsNotFound(deleteBuildRunErr) {
+						return reconcile.Result{}, nil
+					}
 					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, br.Name, deleteError, deleteBuildRunErr)
 					return reconcile.Result{}, deleteBuildRunErr
 				}
@@ -93,6 +100,9 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 				ctxlog.Info(ctx, "Deleting failed buildrun as ttl has been reached.", namespace, request.Namespace, name, request.Name)
 				deleteBuildRunErr := r.client.Delete(ctx, br, &client.DeleteOptions{})
 				if deleteBuildRunErr != nil {
+					if apierrors.IsNotFound(deleteBuildRunErr) {
+						return reconcile.Result{}, nil
+					}
 					ctxlog.Debug(ctx, "Error deleting buildRun.", namespace, request.Namespace, name, br.Name, deleteError, deleteBuildRunErr)
 					return reconcile.Result{}, deleteBuildRunErr
 				}

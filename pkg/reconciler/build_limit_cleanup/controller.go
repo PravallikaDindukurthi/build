@@ -60,11 +60,13 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 	pred := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			o := e.Object.(*buildv1alpha1.Build)
-			return o.Spec.Retention != nil
+			return o.Spec.Retention != nil && (o.Spec.Retention.FailedLimit != nil || o.Spec.Retention.SucceededLimit != nil)
+			// enqueue if retention field is set
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*buildv1alpha1.Build)
-			return n.Spec.Retention != nil
+			return n.Spec.Retention != nil && (n.Spec.Retention.FailedLimit != nil || n.Spec.Retention.SucceededLimit != nil)
+			// enqueue if retention field is set
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			// Never reconcile on deletion, there is nothing we have to do
@@ -86,8 +88,10 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 			if oldCondition != nil && newCondition != nil {
 				if (oldCondition.Status == corev1.ConditionUnknown) &&
 					(newCondition.Status == corev1.ConditionFalse || newCondition.Status == corev1.ConditionTrue) {
-					if n.Status.BuildSpec != nil && n.Status.BuildSpec.Retention != nil {
+					if n.Status.BuildSpec != nil && n.Status.BuildSpec.Retention != nil &&
+						(n.Status.BuildSpec.Retention.FailedLimit != nil || n.Status.BuildSpec.Retention.SucceededLimit != nil) {
 						return true
+						// enqueue
 					}
 				}
 			}

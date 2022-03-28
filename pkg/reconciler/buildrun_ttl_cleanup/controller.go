@@ -58,7 +58,8 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 
 			o := e.Object.(*buildv1alpha1.BuildRun)
 
-			if (o.Status.BuildSpec != nil) && (o.Status.BuildSpec.Retention != nil) {
+			if (o.Status.BuildSpec != nil) && (o.Status.BuildSpec.Retention != nil) &&
+				(o.Status.BuildSpec.Retention.TtlAfterFailed != nil || o.Status.BuildSpec.Retention.SucceededLimit != nil) {
 				return true
 				//enqueue
 			}
@@ -67,7 +68,8 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			o := e.ObjectNew.(*buildv1alpha1.BuildRun)
 
-			if (o.Status.BuildSpec != nil) && (o.Status.BuildSpec.Retention != nil) {
+			if (o.Status.BuildSpec != nil) && (o.Status.BuildSpec.Retention != nil) &&
+				(o.Status.BuildSpec.Retention.TtlAfterFailed != nil || o.Status.BuildSpec.Retention.SucceededLimit != nil) {
 				return true
 				//enqueue
 			}

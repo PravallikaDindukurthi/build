@@ -508,7 +508,7 @@ spec:
 `
 
 // MinimalBuildWithRetentionTTL defines a simple
-// Build with a source, a strategy and ttl that succeeds
+// Build with a source, a strategy and ttl
 const MinimalBuildWithRetentionTTL = `
 apiVersion: shipwright.io/v1alpha1
 kind: Build
@@ -523,31 +523,12 @@ spec:
   output:
     image: image-registry.openshift-image-registry.svc:5000/example/buildpacks-app
   retention:
-    ttlAfterFailed: 4s
-    ttlAfterSucceeded: 4s
-`
-
-// MinimalBuildWithRetentionTTLFail defines a simple
-// Build with a source, a strategy and ttl that fails
-const MinimalBuildWithRetentionTTLFail = `
-apiVersion: shipwright.io/v1alpha1
-kind: Build
-metadata:
-  name: build-retention-ttl-fail
-spec:
-  source:
-    url: "https://github.com/shipwright-io/sample-go"
-  strategy:
-    kind: ClusterBuildStrategy
-  output:
-    image: image-registry.openshift-image-registry.svc:5000/example/buildpacks-app
-  retention:
-    ttlAfterFailed: 4s
-    ttlAfterSucceeded: 4s
+    ttlAfterFailed: 5s
+    ttlAfterSucceeded: 5s
 `
 
 // MinimalBuildWithRetentionLimit defines a simple
-// Build with a source, a strategy and limit that succeeds
+// Build with a source, a strategy and limit
 const MinimalBuildWithRetentionLimit = `
 apiVersion: shipwright.io/v1alpha1
 kind: Build
@@ -566,6 +547,8 @@ spec:
     succeededLimit: 1
 `
 
+// MinimalBuildWithRetentionLimit defines a simple Build with a source,
+// a strategy and different failed and succeeded limits
 const MinimalBuildWithRetentionLimitDiff = `
 apiVersion: shipwright.io/v1alpha1
 kind: Build
@@ -582,23 +565,4 @@ spec:
   retention:
     failedLimit: 1
     succeededLimit: 2
-`
-
-// MinimalBuildWithRetentionLimit defines a simple
-// Build with a source, a strategy and limit that fails
-const MinimalBuildWithRetentionLimitFail = `
-apiVersion: shipwright.io/v1alpha1
-kind: Build
-metadata:
-  name: build-retention-limit
-spec:
-  source:
-    url: "https://github.com/shipwright-io/sample-go"
-  strategy:
-    kind: ClusterBuildStrategy
-  output:
-    image: image-registry.openshift-image-registry.svc:5000/example/buildpacks-app
-  retention:
-    failedLimit: 1
-    succeededLimit: 1
 `
