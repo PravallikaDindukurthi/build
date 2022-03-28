@@ -57,7 +57,7 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 	Context("When a buildrun related to a build with short ttl set succeeds", func() {
 
 		BeforeEach(func() {
-			buildSample = []byte(test.MinimalBuildWithRetentionTTL)
+			buildSample = []byte(test.MinimalBuildWithRetentionTTLFive)
 			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
@@ -83,7 +83,7 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 	Context("Multiple successful buildruns related to build with limit 1.", func() {
 
 		BeforeEach(func() {
-			buildSample = []byte(test.MinimalBuildWithRetentionLimit)
+			buildSample = []byte(test.MinimalBuildWithRetentionLimitOne)
 			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
@@ -140,22 +140,15 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 			// Create 2 successful buildruns
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-success-1"
 			err = tb.CreateBR(buildRunObject)
-			br1, err = tb.GetBRTillCompletion(buildRunObject.Name)
-			Expect(err).To(BeNil())
-			Expect(br1.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
 
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-success-2"
 			err = tb.CreateBR(buildRunObject)
-			br2, err = tb.GetBRTillCompletion(buildRunObject.Name)
-			Expect(err).To(BeNil())
-			Expect(br2.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
 
-			// Load the failing cbs
+			// Load the cbs that can fail
 			cbsObjectFail, err := tb.Catalog.LoadCBSWithName(STRATEGY+tb.Namespace+"-fail", []byte(test.ClusterBuildStrategySingleStepNoPush))
 			Expect(err).To(BeNil())
 			err = tb.CreateClusterBuildStrategy(cbsObjectFail)
 			Expect(err).To(BeNil())
-
 			// Load and create the buildobject with the relevant cbs
 			buildSample = []byte(test.MinimalBuildWithRetentionLimitDiff)
 			buildObject, err = tb.Catalog.LoadBuildWithNameAndStrategy(BUILD+tb.Namespace+"-fail", STRATEGY+tb.Namespace+"-fail", buildSample)
@@ -169,6 +162,16 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-fail-1"
 			buildRunObject.Spec.BuildRef.Name = BUILD + tb.Namespace + "-fail"
 			err = tb.CreateBR(buildRunObject)
+
+			// Wait for buildrun completion
+			br1, err = tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-success-1")
+			Expect(err).To(BeNil())
+			Expect(br1.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
+
+			br2, err = tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-success-2")
+			Expect(err).To(BeNil())
+			Expect(br2.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
+
 			br3, err = tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-fail-1")
 			Expect(err).To(BeNil())
 			Expect(br3.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionFalse))
@@ -184,7 +187,7 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 			// Check that the older failed buildrun has been deleted while the successful buildruns exist
 			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-fail-1")
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
-			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-success-2")
+			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-success-1")
 			Expect(err).To(BeNil())
 			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-success-2")
 			Expect(err).To(BeNil())
@@ -235,7 +238,7 @@ var _ = Describe("Integration tests for retention limits and ttls of buildRuns t
 	Context("When a buildrun related to a build with short ttl set succeeds", func() {
 
 		BeforeEach(func() {
-			buildSample = []byte(test.MinimalBuildWithRetentionTTL)
+			buildSample = []byte(test.MinimalBuildWithRetentionTTLFive)
 			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
@@ -260,7 +263,7 @@ var _ = Describe("Integration tests for retention limits and ttls of buildRuns t
 	Context("Multiple failed buildruns related to build with limit 1.", func() {
 
 		BeforeEach(func() {
-			buildSample = []byte(test.MinimalBuildWithRetentionLimit)
+			buildSample = []byte(test.MinimalBuildWithRetentionLimitOne)
 			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 

@@ -54,8 +54,6 @@ const (
 	RemoteRepositoryUnreachable BuildReason = "RemoteRepositoryUnreachable"
 	// BuildNameInvalid indicates the build name is invalid
 	BuildNameInvalid BuildReason = "BuildNameInvalid"
-	// WrongRetentionParameterType indicates the build retention parameters are wrong
-	WrongRetentionParameterType BuildReason = "WrongRetentionParameterType"
 	// AllValidationsSucceeded indicates a Build was successfully validated
 	AllValidationsSucceeded = "all validations succeeded"
 )
@@ -229,17 +227,17 @@ type BuildRetention struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	FailedLimit *uint `json:"failedLimit,omitempty"`
-	// SucceededLimit defines the maximum number of Succeeded buildruns that should exist.
+	// SucceededLimit defines the maximum number of succeeded buildruns that should exist.
 	//
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	SucceededLimit *uint `json:"succeededLimit,omitempty"`
-	// TtlAfterFailed defines the maximum amount of time the failed buildrun should exist.
+	// TtlAfterFailed defines the maximum duration of time the failed buildrun should exist.
 	//
 	// +optional
 	// +kubebuilder:validation:Format=duration
 	TtlAfterFailed *metav1.Duration `json:"ttlAfterFailed,omitempty"`
-	// TtlAfterFailed defines the maximum amount of time the Succeeded buildrun should exist.
+	// TtlAfterFailed defines the maximum duration of time the Succeeded buildrun should exist.
 	//
 	// +optional
 	// +kubebuilder:validation:Format=duration

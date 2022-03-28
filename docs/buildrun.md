@@ -13,6 +13,7 @@ SPDX-License-Identifier: Apache-2.0
   - [Defining ParamValues](#defining-paramvalues)
   - [Defining the ServiceAccount](#defining-the-serviceaccount)
 - [Canceling a `BuildRun`](#canceling-a-buildrun)
+- [Automatic `BuildRun` deletion](#automatic-buildrun-deletion)
 - [Specifying Environment Variables](#specifying-environment-variables)
 - [BuildRun Status](#buildrun-status)
   - [Understanding the state of a BuildRun](#understanding-the-state-of-a-buildrun)
@@ -158,6 +159,24 @@ spec:
   # [...]
   state: "BuildRunCanceled"
 ```
+
+## Automatic `BuildRun` deletion
+
+We have two controllers that ensure that buildruns can be deleted automatically if required. This is ensured by adding `retention` parameters in build specifications.
+
+- TTL parameters: These are used by the buildrun_ttl_cleanup controller.
+  - `build.spec.retention.ttlAfterFailed`: The buildrun is deleted if the mentioned duration of time has passed and the buildrun has failed.
+  - `build.spec.retention.ttlAfterSucceeded`: The buildrun is deleted if the mentioned duration of time has passed and the buildrun has succeeded.
+- Limit parameters: These are used by the build_limit_cleanup controller.
+  - `build.spec.retention.failedLimit`: This parameter ensures that the number of failed buildruns do not exceed this limit. If the limit is exceeded, the oldest failed buildruns are deleted till the limit is satisfied.
+  - `build.spec.retention.succeededLimit`: This parameter ensures that the number of successful buildruns do not exceed this limit. If the limit is exceeded, the oldest successful buildruns are deleted till the limit is satisfied.
+
+### Buildrun_ttl_cleanup controller
+
+Buildruns are watched by the buildrun_ttl_cleanup controller for the following preconditions:
+
+- Update on `Buildrun` resource if either `ttlAfterSucceeded` or `ttlAfterFailed` are set.
+- Create on `Buildrun` resource if either `ttlAfterSucceeded` or `ttlAfterFailed` are set.
 
 ## Specifying Environment Variables
 

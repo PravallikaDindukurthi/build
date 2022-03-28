@@ -509,7 +509,7 @@ spec:
 
 // MinimalBuildWithRetentionTTL defines a simple
 // Build with a source, a strategy and ttl
-const MinimalBuildWithRetentionTTL = `
+const MinimalBuildWithRetentionTTLFive = `
 apiVersion: shipwright.io/v1alpha1
 kind: Build
 metadata:
@@ -528,8 +528,8 @@ spec:
 `
 
 // MinimalBuildWithRetentionLimit defines a simple
-// Build with a source, a strategy and limit
-const MinimalBuildWithRetentionLimit = `
+// Build with a source, a strategy and limit set as 1
+const MinimalBuildWithRetentionLimitOne = `
 apiVersion: shipwright.io/v1alpha1
 kind: Build
 metadata:

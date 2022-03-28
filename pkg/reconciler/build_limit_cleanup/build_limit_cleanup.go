@@ -59,8 +59,6 @@ func (r *ReconcileBuild) Reconcile(ctx context.Context, request reconcile.Reques
 		return reconcile.Result{}, err
 	}
 
-	//if b.Spec.Retention != nil && (b.Spec.Retention.FailedLimit != nil || b.Spec.Retention.SucceededLimit != nil) {
-
 	lbls := map[string]string{
 		build.LabelBuild: b.Name,
 	}
