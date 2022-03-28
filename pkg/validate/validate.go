@@ -27,8 +27,6 @@ const (
 	BuildName = "buildname"
 	// Envs for validating `spec.env` entries
 	Envs = "env"
-	//Retention for validating spec.retention
-	Retention = "retention"
 	// OwnerReferences for validating the ownerreferences between a Build
 	// and BuildRun objects
 	OwnerReferences = "ownerreferences"

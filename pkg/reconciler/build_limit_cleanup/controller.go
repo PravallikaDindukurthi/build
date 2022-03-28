@@ -77,6 +77,7 @@ func add(ctx context.Context, mgr manager.Manager, r reconcile.Reconciler, maxCo
 			// Never reconcile in case of create buildrun event
 			return false
 		},
+		// Reconcile the build the related buildrun has just completed
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			n := e.ObjectNew.(*buildv1alpha1.BuildRun)
 			o := e.ObjectOld.(*buildv1alpha1.BuildRun)

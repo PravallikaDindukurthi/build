@@ -566,6 +566,24 @@ spec:
     succeededLimit: 1
 `
 
+const MinimalBuildWithRetentionLimitDiff = `
+apiVersion: shipwright.io/v1alpha1
+kind: Build
+metadata:
+  name: build-retention-limit
+spec:
+  source:
+    url: "https://github.com/shipwright-io/sample-go"
+    contextDir: docker-build
+  strategy:
+    kind: ClusterBuildStrategy
+  output:
+    image: image-registry.openshift-image-registry.svc:5000/example/buildpacks-app
+  retention:
+    failedLimit: 1
+    succeededLimit: 2
+`
+
 // MinimalBuildWithRetentionLimit defines a simple
 // Build with a source, a strategy and limit that fails
 const MinimalBuildWithRetentionLimitFail = `

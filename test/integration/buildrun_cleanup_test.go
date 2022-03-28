@@ -79,14 +79,14 @@ var _ = Describe("Integration tests for retention limits of buildRuns that succe
 
 	// Test for editing buildrun after completion
 
-	Context("when a build with a small limit set and buildrun succeeds - 2 buildruns", func() {
+	Context("Multiple successful buildruns related to build with limit 1.", func() {
 
 		BeforeEach(func() {
 			buildSample = []byte(test.MinimalBuildWithRetentionLimit)
 			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
-		It("Should not find the buildrun after few seconds after it succeeds", func() {
+		It("The older successful buildrun should not exist.", func() {
 
 			Expect(tb.CreateBuild(buildObject)).To(BeNil())
 
@@ -180,14 +180,14 @@ var _ = Describe("Integration tests for retention limits of buildRuns that fail.
 		})
 	})
 
-	Context("when a build with a small limit set and buildrun fails - 2 buildruns", func() {
+	Context("Multiple successful buildruns related to build with limit 1.", func() {
 
 		BeforeEach(func() {
 			buildSample = []byte(test.MinimalBuildWithRetentionLimitFail)
 			buildRunSample = []byte(test.MinimalBuildRunRetention)
 		})
 
-		It("Should not find the first buildrun after both fail", func() {
+		It("The older failed buildrun should not exist.", func() {
 
 			Expect(tb.CreateBuild(buildObject)).To(BeNil())
 
@@ -212,6 +212,119 @@ var _ = Describe("Integration tests for retention limits of buildRuns that fail.
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
 
+	})
+
+})
+
+var _ = Describe("Parallel buildsruns.", func() {
+	var (
+		cbsObject      *v1alpha1.ClusterBuildStrategy
+		buildObject    *v1alpha1.Build
+		buildRunObject *v1alpha1.BuildRun
+		buildSample    []byte
+		buildRunSample []byte
+	)
+	// Load the ClusterBuildStrategies before each test case
+	BeforeEach(func() {
+		cbsObject, err = tb.Catalog.LoadCBSWithName(STRATEGY+tb.Namespace, []byte(test.ClusterBuildStrategyNoOp))
+		Expect(err).To(BeNil())
+
+		err = tb.CreateClusterBuildStrategy(cbsObject)
+		Expect(err).To(BeNil())
+	})
+	AfterEach(func() {
+
+		_, err = tb.GetBuild(buildObject.Name)
+		if err == nil {
+			Expect(tb.DeleteBuild(buildObject.Name)).To(BeNil())
+		}
+		err := tb.DeleteClusterBuildStrategy(cbsObject.Name)
+		Expect(err).To(BeNil())
+
+		err = tb.DeleteClusterBuildStrategy(cbsObject.Name + "-fail")
+		Expect(err).To(BeNil())
+	})
+
+	JustBeforeEach(func() {
+		if buildSample != nil {
+			buildObject, err = tb.Catalog.LoadBuildWithNameAndStrategy(BUILD+tb.Namespace, STRATEGY+tb.Namespace, buildSample)
+			Expect(err).To(BeNil())
+		}
+
+		if buildRunSample != nil {
+			buildRunObject, err = tb.Catalog.LoadBRWithNameAndRef(BUILDRUN+tb.Namespace, BUILD+tb.Namespace, buildRunSample)
+			Expect(err).To(BeNil())
+		}
+	})
+
+	Context("when a build with a short ttl set and buildrun fails", func() {
+
+		BeforeEach(func() {
+			buildSample = []byte(test.MinimalBuildWithRetentionLimitDiff)
+			buildRunSample = []byte(test.MinimalBuildRunRetention)
+		})
+
+		It("Should not find the buildrun after few seconds after it fails", func() {
+			// var wg sync.WaitGroup
+			var br1 *v1alpha1.BuildRun
+			var br2 *v1alpha1.BuildRun
+			var br3 *v1alpha1.BuildRun
+
+			// Create build that will be successful using quick cbs
+			Expect(tb.CreateBuild(buildObject)).To(BeNil())
+			buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+			Expect(err).To(BeNil())
+
+			// Create 2 successful buildruns
+			buildRunObject.Name = BUILDRUN + tb.Namespace + "-success-1"
+			err = tb.CreateBR(buildRunObject)
+			br1, err = tb.GetBRTillCompletion(buildRunObject.Name)
+			Expect(err).To(BeNil())
+			Expect(br1.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
+
+			buildRunObject.Name = BUILDRUN + tb.Namespace + "-success-2"
+			err = tb.CreateBR(buildRunObject)
+			br2, err = tb.GetBRTillCompletion(buildRunObject.Name)
+			Expect(err).To(BeNil())
+			Expect(br2.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
+
+			// Create a build that will fail using a simple cbs
+			cbsObjectFail, err := tb.Catalog.LoadCBSWithName(STRATEGY+tb.Namespace+"-fail", []byte(test.ClusterBuildStrategySingleStepNoPush))
+			Expect(err).To(BeNil())
+			err = tb.CreateClusterBuildStrategy(cbsObjectFail)
+			Expect(err).To(BeNil())
+			buildSample = []byte(test.MinimalBuildWithRetentionLimitDiff)
+			buildObject, err = tb.Catalog.LoadBuildWithNameAndStrategy(BUILD+tb.Namespace+"-fail", STRATEGY+tb.Namespace+"-fail", buildSample)
+			Expect(err).To(BeNil())
+			buildObject.Spec.Source.ContextDir = nil
+			Expect(tb.CreateBuild(buildObject)).To(BeNil())
+			buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+			Expect(err).To(BeNil())
+
+			buildRunObject2 := buildRunObject
+			buildRunObject2.Name = BUILDRUN + tb.Namespace + "-fail-1"
+			buildRunObject2.Spec.BuildRef.Name = BUILD + tb.Namespace + "-fail"
+			err = tb.CreateBR(buildRunObject2)
+			br3, err = tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-fail-1")
+			Expect(err).To(BeNil())
+			Expect(br3.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionFalse))
+
+			// Create 1 failed buildrun.
+			buildRunObject.Name = BUILDRUN + tb.Namespace + "-fail-2"
+			buildRunObject.Spec.BuildRef.Name = BUILD + tb.Namespace + "-fail"
+			err = tb.CreateBR(buildRunObject)
+			br4, err := tb.GetBRTillCompletion(buildRunObject.Name)
+			Expect(err).To(BeNil())
+			Expect(br4.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionFalse))
+
+			// Check that the older failed buildrun has been deleted while the successful buildruns exist
+			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-fail-1")
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-success-2")
+			Expect(err).To(BeNil())
+			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-success-2")
+			Expect(err).To(BeNil())
+		})
 	})
 
 })
