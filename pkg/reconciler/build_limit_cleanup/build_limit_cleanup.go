@@ -22,8 +22,8 @@ import (
 
 // ReconcileBuild reconciles a Build object
 type ReconcileBuild struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from :qthe cache and writes to the apiserver
+	/* This client, initialized using mgr.Client() above, is a split client
+	   that reads objects from :qthe cache and writes to the apiserver */
 	config                *config.Config
 	client                client.Client
 	scheme                *runtime.Scheme

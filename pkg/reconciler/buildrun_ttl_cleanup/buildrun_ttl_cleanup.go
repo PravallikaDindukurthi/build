@@ -23,8 +23,8 @@ import (
 // ReconcileBuildRun reconciles a BuildRun object
 
 type ReconcileBuildRun struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
+	/* This client, initialized using mgr.Client() above, is a split client
+	   that reads objects from the cache and writes to the apiserver */
 	config                *config.Config
 	client                client.Client
 	scheme                *runtime.Scheme
@@ -72,8 +72,8 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 		return reconcile.Result{}, nil
 	}
 
-	// In case ttl has been reached, delete the buildrun, if not,
-	// calculate the remaining time and requeue the buildrun
+	/* In case ttl has been reached, delete the buildrun, if not,
+	   calculate the remaining time and requeue the buildrun */
 	switch condition.Status {
 
 	case corev1.ConditionTrue:

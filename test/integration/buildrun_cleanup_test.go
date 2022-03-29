@@ -17,6 +17,7 @@ import (
 var _ = Describe("Integration tests for retention limits and ttls for succeeded buildruns.", func() {
 	var (
 		cbsObject      *v1alpha1.ClusterBuildStrategy
+		cbsObjectFail  *v1alpha1.ClusterBuildStrategy
 		buildObject    *v1alpha1.Build
 		buildRunObject *v1alpha1.BuildRun
 		buildSample    []byte
@@ -94,21 +95,20 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 			buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
 			Expect(err).To(BeNil())
 
-			//Br 1
+			// Create first buildrun
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-1"
 			Expect(tb.CreateBR(buildRunObject)).To(BeNil())
 			br1, err := tb.GetBRTillCompletion(buildRunObject.Name)
 			Expect(err).To(BeNil())
 			Expect(br1.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
-			br1Name := br1.Name
-			// Br 2
+			// Create second buildrun
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-2"
 			Expect(tb.CreateBR(buildRunObject)).To(BeNil())
 			br2, err := tb.GetBRTillCompletion(buildRunObject.Name)
 			Expect(err).To(BeNil())
 			Expect(br2.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
 
-			_, err = tb.GetBR(br1Name)
+			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-1")
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
 
@@ -117,22 +117,26 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 	Context("Multiple buildruns with different build limits for failure and success", func() {
 
 		BeforeEach(func() {
+			cbsObjectFail, err = tb.Catalog.LoadCBSWithName(STRATEGY+tb.Namespace+"-fail", []byte(test.ClusterBuildStrategySingleStepNoPush))
+			Expect(err).To(BeNil())
+
+			// Load build strategy that can fail
+			err = tb.CreateClusterBuildStrategy(cbsObjectFail)
+			Expect(err).To(BeNil())
 			buildSample = []byte(test.MinimalBuildWithRetentionLimitDiff)
 			buildRunSample = []byte(test.MinimalBuildRunRetention)
+
 		})
 
 		AfterEach(func() {
-			err := tb.DeleteClusterBuildStrategy(cbsObject.Name + "-fail")
+			err := tb.DeleteClusterBuildStrategy(cbsObjectFail.Name)
 			Expect(err).To(BeNil())
 		})
+		// Case with failedLimit 1 and succeededLimit 2.
+		// It ensures that only relevant buildruns are affected by retention parameters
+		It("Should not find the old failed buildrun if the limit has been triggered", func() {
 
-		It("Should not find the old buildrun if the limit has been triggered", func() {
-			// var wg sync.WaitGroup
-			var br1 *v1alpha1.BuildRun
-			var br2 *v1alpha1.BuildRun
-			var br3 *v1alpha1.BuildRun
-
-			// Create build that will be successful using quick cbs
+			// Create build
 			Expect(tb.CreateBuild(buildObject)).To(BeNil())
 			buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
 			Expect(err).To(BeNil())
@@ -144,13 +148,7 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-success-2"
 			err = tb.CreateBR(buildRunObject)
 
-			// Load the cbs that can fail
-			cbsObjectFail, err := tb.Catalog.LoadCBSWithName(STRATEGY+tb.Namespace+"-fail", []byte(test.ClusterBuildStrategySingleStepNoPush))
-			Expect(err).To(BeNil())
-			err = tb.CreateClusterBuildStrategy(cbsObjectFail)
-			Expect(err).To(BeNil())
-			// Load and create the buildobject with the relevant cbs
-			buildSample = []byte(test.MinimalBuildWithRetentionLimitDiff)
+			// Load and create the failing buildobject with the relevant cbs
 			buildObject, err = tb.Catalog.LoadBuildWithNameAndStrategy(BUILD+tb.Namespace+"-fail", STRATEGY+tb.Namespace+"-fail", buildSample)
 			Expect(err).To(BeNil())
 			buildObject.Spec.Source.ContextDir = nil
@@ -164,15 +162,15 @@ var _ = Describe("Integration tests for retention limits and ttls for succeeded 
 			err = tb.CreateBR(buildRunObject)
 
 			// Wait for buildrun completion
-			br1, err = tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-success-1")
+			br1, err := tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-success-1")
 			Expect(err).To(BeNil())
 			Expect(br1.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
 
-			br2, err = tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-success-2")
+			br2, err := tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-success-2")
 			Expect(err).To(BeNil())
 			Expect(br2.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionTrue))
 
-			br3, err = tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-fail-1")
+			br3, err := tb.GetBRTillCompletion(BUILDRUN + tb.Namespace + "-fail-1")
 			Expect(err).To(BeNil())
 			Expect(br3.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionFalse))
 
@@ -274,21 +272,20 @@ var _ = Describe("Integration tests for retention limits and ttls of buildRuns t
 			buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
 			Expect(err).To(BeNil())
 
-			// Build run - 1
+			// Create first buildrun
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-1"
 			Expect(tb.CreateBR(buildRunObject)).To(BeNil())
 			br1, err := tb.GetBRTillCompletion(buildRunObject.Name)
 			Expect(err).To(BeNil())
 			Expect(br1.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionFalse))
-			br1Name := br1.Name
-			// Build run - 2
+			// Create second buildrun
 			buildRunObject.Name = BUILDRUN + tb.Namespace + "-2"
 			Expect(tb.CreateBR(buildRunObject)).To(BeNil())
 			br2, err := tb.GetBRTillCompletion(buildRunObject.Name)
 			Expect(err).To(BeNil())
 			Expect(br2.Status.GetCondition(v1alpha1.Succeeded).Status).To(Equal(corev1.ConditionFalse))
 
-			_, err = tb.GetBR(br1Name)
+			_, err = tb.GetBR(BUILDRUN + tb.Namespace + "-1")
 			Expect(apierrors.IsNotFound(err)).To(BeTrue())
 		})
 

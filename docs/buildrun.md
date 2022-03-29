@@ -178,6 +178,8 @@ Buildruns are watched by the buildrun_ttl_cleanup controller for the following p
 - Update on `Buildrun` resource if either `ttlAfterSucceeded` or `ttlAfterFailed` are set.
 - Create on `Buildrun` resource if either `ttlAfterSucceeded` or `ttlAfterFailed` are set.
 
+If these conditions are met, the reconciler checks if the the ttl retention field is satisfied or not. If it isn't, the buildrun is requeued after calculating the remaining time the buildrun is allowed to exist.
+
 ## Specifying Environment Variables
 
 An example of a `BuildRun` that specifies environment variables:
